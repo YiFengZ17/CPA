@@ -181,6 +181,7 @@
   const SPECIMEN = [
     { course: 'sliding-window', lang: 'rust', chapter: 4, steps: 'code' },
     { course: 'transformer', chapter: 1, steps: [6, 7] },
+    { course: 'cs336-a2', chapter: 5, steps: [6, 7] },
     { course: 'dynamic-programming', lang: 'python', chapter: 5, steps: 'code' },
     { course: 'sliding-window', lang: 'cpp', chapter: 5, steps: 'code' },
     { course: 'sliding-window', lang: 'java', chapter: 1, steps: 'code' },
@@ -367,6 +368,35 @@
     );
   }
 
+  // 按子模块（章的 group）分组的课程卡片：右边一行一个子模块，从上往下按顺序
+  function groupCard(course) {
+    const groups = [];
+    course.chapters.forEach((ch, i) => {
+      const name = ch.group || ch.title;
+      const last = groups[groups.length - 1];
+      if (last && last.name === name) last.items.push(i);
+      else groups.push({ name, items: [i] });
+    });
+    const sum = (items, f) => items.reduce((n, i) => n + f(course.chapters[i]), 0);
+    const seen = (items) => sum(items, (ch) => S.seenInChapter(course.id, ch)) / Math.max(1, sum(items, (ch) => ch.steps.length));
+    const stack = groups
+      .map(
+        (g, k) =>
+          '<a class="layer" href="#' + course.id + '-' + (g.items[0] + 1) + '" style="--p:' + seen(g.items).toFixed(3) + '"><span class="mono">' + pad2(k + 1) + '</span>' + esc(g.name) +
+          '<small>' + g.items.length + ' 章</small></a>'
+      )
+      .join('');
+    return (
+      '<article class="feature"><div>' +
+      '<div class="eyebrow">' + esc(course.eyebrow || '') + '</div>' +
+      '<h4>' + esc(course.title) + '</h4><p>' + esc(course.blurb) + '</p>' +
+      '<div class="stats">' + (course.stats || []).map(([v, k]) => '<div class="stat"><b>' + esc(v) + '</b><span>' + esc(k) + '</span></div>').join('') + '</div>' +
+      '<a class="s-btn s-btn-primary" href="#' + course.id + '">进入课程 →</a></div>' +
+      '<div class="stack is-down" aria-label="按作业顺序的各部分">' + stack + '</div>' +
+      '</article>'
+    );
+  }
+
   function topicTiles() {
     return C.TOPICS.map((t, i) => {
       const course = t.course && C.byId[t.course] && C.byId[t.course].chapters.length ? C.byId[t.course] : null;
@@ -404,6 +434,7 @@
     document.title = 'CPA · Code Programming Animation';
     const transformer = C.byId.transformer;
     const algo = C.courses.filter((c) => c.board === 'algo');
+    const cs336 = C.courses.filter((c) => c.board === 'cs336');
     const last = lastVisit();
     const proof = proofNumbers();
     const totals = C.TOPICS.reduce((a, t) => [a[0] + t.easy, a[1] + t.medium, a[2] + t.hard], [0, 0, 0]);
@@ -414,7 +445,7 @@
       '<div class="wrap"><div class="hero-grid" id="top"><div>' +
       '<div class="eyebrow">Code Programming Animation</div>' +
       '<h1><span>看代码，</span><b>一个字一个字</b><b class="end">长出来</b></h1>' +
-      '<p class="lede">先读几页思路，再看代码在编辑器里逐字写出，每一页由你翻。旁白按人思考的顺序走：先想到要做什么，再落下这一行代码。从零手写 Transformer，LeetCode 题单逐类精讲，算法题可选五种语言。</p>' +
+      '<p class="lede">先读几页思路，再看代码在编辑器里逐字写出，每一页由你翻。旁白按人思考的顺序走：先想到要做什么，再落下这一行代码。从零手写 Transformer，CS336 作业逐步实现，LeetCode 题单逐类精讲，算法题可选五种语言。</p>' +
       '<div class="cta">' +
       (last
         ? '<a class="s-btn s-btn-primary" href="' + last.href + '">继续：' + esc(last.text) + ' →</a><a class="s-btn s-btn-ghost" href="#' + transformer.id + '">从 Transformer 开始</a>'
@@ -439,9 +470,13 @@
       '<div class="mini"><span class="ok">$</span> python3 solution.py\n<span style="color: var(--text)">12.75</span>\n<span style="color: var(--text)">5.0</span>\n<span class="ok">✓ 与真实运行一致</span></div></div>' +
       '</div></section>' +
       '<section class="section wrap" id="boards" aria-labelledby="boards-title"><div class="section-head"><div><div class="eyebrow">板块</div><h2 id="boards-title">选一条路开始</h2></div>' +
-      '<p>三个板块各自独立，可以从任何一个开始。学到哪里，回来时这里会点亮。</p></div>' +
+      '<p>四个板块各自独立，可以从任何一个开始。学到哪里，回来时这里会点亮。</p></div>' +
       '<div class="board"><div class="board-head"><h3>深度学习</h3><span class="mono">1 门课</span><span class="spacer"></span><span class="mono">已完成</span></div>' +
       transformerCard(transformer) + '</div>' +
+      (cs336.length
+        ? '<div class="board" id="cs336"><div class="board-head"><h3>CS336 作业</h3><span class="mono">Stanford · Language Modeling from Scratch</span><span class="spacer"></span><span class="mono">' + cs336.length + ' 份作业</span></div>' +
+          cs336.map(groupCard).join('') + '</div>'
+        : '') +
       '<div class="board" id="algo"><div class="board-head"><h3>算法题</h3><span class="mono">The-Summer-of-2026 题单</span><span class="spacer"></span>' + langPicker('home-langs') + '</div>' +
       '<div class="totals"><div class="mono" style="font-size: 13px; color: var(--text-2)">195 题 · 16 类</div>' +
       '<div class="totals-bar" aria-hidden="true"><span class="e" style="flex: ' + totals[0] + '"></span><span class="m" style="flex: ' + totals[1] + '"></span><span class="h" style="flex: ' + totals[2] + '"></span></div>' +
@@ -514,7 +549,7 @@
       '<div class="c-progress"><div class="c-progress-top"><span>学习进度</span><span>' + seen + ' / ' + total + ' 页</span></div>' +
       '<div class="c-progress-bar"><i style="width:' + ((seen / total) * 100).toFixed(1) + '%"></i></div></div>' +
       (c.langs ? '<div class="c-lang"><span>题解语言</span>' + langPicker('course-langs') + '</div>' : '') +
-      (c.source ? '<div class="c-lang"><span>代码来源</span><a href="' + esc(c.source.url) + '" target="_blank" rel="noopener" class="mono">' + esc(c.source.name) + ' ↗</a></div>' : '') +
+      (c.source ? '<div class="c-lang"><span>' + esc(c.source.label || '代码来源') + '</span><a href="' + esc(c.source.url) + '" target="_blank" rel="noopener" class="mono">' + esc(c.source.name) + ' ↗</a></div>' : '') +
       '</div></div></div></header>' +
       '<main class="section wrap" style="padding-top: 64px">' +
       '<div class="section-head"><div><div class="eyebrow">目录</div><h2>' + c.chapters.length + (c.board === 'algo' ? ' 章' : ' 章') + '</h2></div>' +

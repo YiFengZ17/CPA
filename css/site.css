@@ -701,6 +701,10 @@ html.in-site body {
   align-self: center;
 }
 
+.stack.is-down {
+  flex-direction: column;
+}
+
 .layer {
   position: relative;
   display: grid;

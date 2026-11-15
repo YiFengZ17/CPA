@@ -55,6 +55,9 @@
     // 引用 Java 官方文档（对照 OpenJDK 源码里的 Javadoc）
     javadoc: (api, page, quote, zh) => ({ ref: { api, url: 'https://docs.oracle.com/en/java/javase/21/docs/api/java.base/' + page, source: 'Java 文档', quote, zh } }),
 
+    // 引用 Triton 文档（对照 triton 包源码里的文档字符串，官方文档由它生成）
+    tritondoc: (api, page, quote, zh) => ({ ref: { api, url: 'https://triton-lang.org/main/python-api/' + page, source: 'Triton 文档', quote, zh } }),
+
     // 引用 Rust 标准库文档（对照 rust-lang/rust 源码里的文档注释）
     rustdoc: (api, page, quote, zh) => ({ ref: { api, url: 'https://doc.rust-lang.org/std/' + page, source: 'Rust 文档', quote, zh } }),
   };

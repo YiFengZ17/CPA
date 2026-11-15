@@ -11,13 +11,14 @@
 | 课程 | 内容 | 规模 | 语言 |
 |---|---|---|---|
 | 从零手写 Transformer | 嵌入、位置编码、层归一化、前馈网络、多头注意力、编码器、解码器、组装成模型 | 6 章 95 页，`model.py` 写到 241 行 | Python（PyTorch） |
+| CS336 作业 2：系统 | 斯坦福 CS336 作业 2：端到端测速、混合精度、FlashAttention-2（PyTorch 版、Triton kernel、反向传播）、DDP 的三个版本、优化器状态分片 | 13 章 94 页，9 个文件 | Python（PyTorch、Triton） |
 | 哈希表与数组 | 概念（哈希表怎么一步找到、冲突、计数数组、原地标记），然后 1431、383、1、169、448、1331、49、128、705 九道题，最后亲手实现哈希集合 | 10 章 70 页 | Python、C、C++、Java、Rust |
 | 双指针 | 概念（每一步排除一批、三种指针的模板），然后「相向指针」125、345、LCR 006、11、15、42，「同向指针」283、392、844、75，「快慢指针」287 | 12 章 74 页 | Python、C、C++、Java、Rust |
 | 前缀和与前后缀分解 | 概念（区间和 = 两个前缀相减、前缀和配哈希表、前后缀分解），然后 1732、303、560、238 四道题 | 5 章 29 页 | Python、C、C++、Java、Rust |
 | 滑动窗口 | 概念与模板，然后 643、1876、219、209、3、438、76 七道题，从简单到困难 | 8 章 69 页 | Python、C、C++、Java、Rust |
 | 动态规划 | 概念（从递归到填表、四步法），然后 7 个子模块 29 道题：一维递推、子数组、股票、网格、背包、子序列与字符串、区间与计数 | 30 章 219 页 | Python、C、C++、Java、Rust |
 
-每章最后都会真实运行一次。页面终端里的输出，全部用真实的 PyTorch、Python、gcc、g++、Java、Rust 跑过，逐行一致（41 次运行）。
+每章最后都会真实运行一次。页面终端里的输出，全部用真实的 PyTorch、Python、gcc、g++、Java、Rust 跑过，逐行一致。CS336 作业 2 没有 GPU 也真实运行：Triton kernel 用解释器模式（`TRITON_INTERPRET=1`）在 CPU 上执行，分布式用 `gloo` 后端起 4 个进程；计时这类每次都不一样的输出，用正则核对格式。
 
 后续计划（其余 15 类 LeetCode 题、Python 入门、C 语言入门、导出视频）见 [PLAN.md](PLAN.md)。
 
@@ -73,6 +74,7 @@ js/site.js                  展厅：首页和课程页
 js/main.js                  路由：按网址显示展厅或编辑器
 lessons/kit.js              课程脚本的公共写法：引用各语言官方文档和论文
 lessons/transformer/        从零手写 Transformer（00-course.js 定义课程，01-06 是各章）
+lessons/cs336-a2/           CS336 作业 2（00-course.js 定义课程、A1 模型和演示的帧，01-13 是各章，接着写同一个项目）
 lessons/hash-table/         哈希表与数组（00-course.js 定义课程和演示的帧，01 概念，02-10 九道题）
 lessons/two-pointers/       双指针（00-course.js 定义课程和演示的帧，01 概念，02-12 十一道题，按三种指针分组）
 lessons/prefix-sum/         前缀和与前后缀分解（00-course.js 定义课程和演示的帧，01 概念，02-05 四道题）
@@ -169,7 +171,7 @@ node tools/verify.mjs /tmp/out
 node tools/check-outputs.mjs /tmp/out python3
 ```
 
-在每章导出的目录里执行脚本里写的终端命令（`python3`、`gcc`、`g++`、`javac`、`rustc`），和脚本里写的输出逐行比较。第二个参数是 Python 解释器，Transformer 课程需要装好 PyTorch。第三个参数可选，只核对 id 以它开头的章，比如 `dp-1143`。
+在每章导出的目录里执行脚本里写的终端命令（`python3`、`gcc`、`g++`、`javac`、`rustc`），和脚本里写的输出逐行比较。第二个参数是 Python 解释器，Transformer 课程需要装好 PyTorch，CS336 作业 2 还需要 Triton。第三个参数可选，只核对 id 以它开头的章，比如 `dp-1143`。
 
 ## 以后的方向
 
@@ -177,6 +179,7 @@ node tools/check-outputs.mjs /tmp/out python3
 
 ## 内容来源
 
+- CS336 作业 2 的要求来自 [stanford-cs336/assignment2-systems](https://github.com/stanford-cs336/assignment2-systems)，题目用自己的话转述，代码是这里自己写的实现；`model.py` 是作业 1 模型的精简版（位置编码用可学习的嵌入代替 RoPE）。
 - Transformer 的代码来自 [hkproj/pytorch-transformer](https://github.com/hkproj/pytorch-transformer) 的 `model.py`，书写顺序参考 Umar Jamil 的视频 [Coding a Transformer from scratch on PyTorch](https://www.youtube.com/watch?v=ISNdQcPhsts)：类按视频里写的先后排列。和原文件相比有几处小调整：
   - 说明性的英文注释不保留，只保留标注张量形状的注释；
   - 关键字参数两边的空格按 PEP 8 去掉（如 `dim=-1`），`ResidualConnection` 多出的一层缩进改成标准的 4 格；

@@ -25,16 +25,18 @@ for (const { course, lang, chapters } of eachVariant()) {
     if (!runs.length) continue;
     const last = runs[runs.length - 1];
     const expected = last.output.join('\n');
+    // 输出里有计时这类每次都不一样的数时，脚本用 pattern 写每一行的正则，页面上显示的仍是 output 里一次真实运行的结果
+    const pattern = last.pattern ? new RegExp('^' + last.pattern.join('\n') + '$') : null;
     const cmd = last.run.replace(/^python3? /, JSON.stringify(python) + ' ');
     let got;
     try {
-      got = execSync(cmd, { cwd: chapterDir(outDir, course, lang, lesson), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: '/bin/bash' }).trimEnd();
+      got = execSync(cmd, { cwd: chapterDir(outDir, course, lang, lesson), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: '/bin/bash', timeout: 300000 }).trimEnd();
     } catch (e) {
       got = '（运行出错）\n' + String(e.stdout || '') + String(e.stderr || e.message).trimEnd();
     }
     checked++;
     const label = course.id + (lang ? ' · ' + Catalog.LANGS[lang].name : '') + ' · ' + lesson.id;
-    if (got === expected) {
+    if (pattern ? pattern.test(got) : got === expected) {
       console.log('✓ ' + label);
     } else {
       bad++;

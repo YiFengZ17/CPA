@@ -26,6 +26,7 @@
  * 锚点文本必须在文件里恰好出现一次，否则加载时直接报错。
  *
  * 一门课分成好几章，后一章接着前一章写完的代码继续：compile 的第二个参数就是前一章结束时的状态。
+ * 一章还可以写 preset: { 文件名: 内容 }：这些文件在这一章开始时就已经写好（比如上一个作业留下的代码），不逐字打出来。
  */
 (function (root) {
   'use strict';
@@ -59,8 +60,19 @@
   //   { kind: 'note', file, pos, text }  一行代码的说明，放在这一行上方
   function newState(lesson) {
     const st = { files: {}, order: [], active: null, cursor: {}, marks: {}, notes: [], sel: null, term: null };
+    addPreset(st, lesson);
     if (lesson.files.length) openFile(st, lesson.files[0]);
     return st;
+  }
+
+  // 这一章开始时就已经写好的文件
+  function addPreset(st, lesson) {
+    for (const [name, text] of Object.entries(lesson.preset || {})) {
+      if (name in st.files) continue;
+      st.files[name] = text;
+      st.cursor[name] = text.length;
+      st.order.push(name);
+    }
   }
 
   function openFile(st, name) {
@@ -253,6 +265,7 @@
     st.notes = [];
     st.sel = null;
     st.term = null;
+    addPreset(st, lesson);
     if (lesson.files.length) openFile(st, lesson.files[0]);
     return st;
   }
