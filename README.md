@@ -4,7 +4,7 @@
 
 旁白按人思考的顺序走：每一步开头先说要解决什么；之后每写一行代码之前，旁白里先出现引出这一行的那个念头，停一下，再把这一行写出来。
 
-在线版：<https://yifengz17.github.io/LLM-from-scratch-animation/>
+在线版：<https://yifengz17.github.io/CPA/>
 
 ## 现有课程
 
