@@ -37,9 +37,9 @@
         title: '这一章要做的两件事',
         doc: [
           ref('torch.distributed.all_reduce(tensor, op=ReduceOp.SUM, group=None, async_op=False)', 'distributed.html#torch.distributed.all_reduce', 'Reduces the tensor data across all machines in a way that all get the final result.', '把所有机器上的张量数据规约起来，并让每台机器都得到最终结果。'),
-          '第一件事：亲眼看一次 all-reduce。4 个进程各自造一个张量，rank 0 是 [1, 1, 1]，rank 1 是 [2, 2, 2]……调用 `all_reduce` 以后，每个进程手里都应该变成 [10, 10, 10]。注意它是**原地**修改的：调用前后是同一个张量。',
-          '第二件事是作业要求的测速：all-reduce 不同大小的张量（作业里从 1 MB 到 1 GB）要多久。通信的时间大致和数据量成正比，再加上一点固定的启动开销。这决定了 DDP 里「梯度同步」要花多少时间。',
-          '测通信时间有两个细节：先做一次预热；计时结束后，把每个进程测到的时间收集起来取最大的，因为最慢的那个进程才是大家真正要等的。',
+          '第一件事：亲眼看一次 all-reduce。4 个进程各自造一个张量，rank 0 是 [1, 1, 1]，rank 1 是 [2, 2, 2]……调用 `all_reduce` 以后，每个进程手里都应该变成 [10, 10, 10]。注意它是**原地**修改的，调用前后是同一个张量。',
+          '第二件事是作业要求的测速：all-reduce 不同大小的张量（作业里从 1 MB 到 1 GB）要多久。为什么要测？DDP 每一步都要同步一次梯度，这一项决定了它要花多少时间。可以预期，通信时间大致和数据量成正比，再加上一点固定的启动开销。',
+          '测通信时间有两个细节：先预热一次；计时结束后，把每个进程测到的时间收集起来取最大的，因为大家真正要等的是最慢的那个进程。',
         ],
       },
       {
@@ -47,7 +47,7 @@
         title: '多个进程一起打印',
         doc: [
           ref('torch.distributed.barrier(group=None, …)', 'distributed.html#torch.distributed.barrier', 'Synchronize all processes.', '同步所有进程。'),
-          '4 个进程同时 `print`，输出的顺序是随机的，甚至会交错在一行里。要让它们按 rank 顺序打印，就轮流来：第 r 轮只让 rank r 打印，然后所有进程在 `barrier` 处等齐，再进入下一轮。',
+          '4 个进程同时 `print`，输出的顺序是随机的，甚至会交错在一行里。不妨让它们轮流来：第 r 轮只让 rank r 打印，然后所有进程在 `barrier` 处等齐，再进入下一轮。',
           ref('torch.distributed.all_gather_object(object_list, obj, group=None)', 'distributed.html#torch.distributed.all_gather_object', 'Gathers picklable objects from the whole group into a list.', '把整个组里可以被 pickle 的对象收集到一个列表里。'),
           '计时的结果是普通的 Python 数，不是张量，用 `all_gather_object` 收集：每个进程都拿到一个列表，第 r 个元素是 rank r 测到的时间。',
         ],

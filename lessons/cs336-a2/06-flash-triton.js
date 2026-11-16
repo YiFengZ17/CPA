@@ -25,8 +25,8 @@
         title: 'Triton：按「块」写 GPU 程序',
         doc: [
           tritondoc('triton.jit', 'generated/triton.jit.html', 'Decorator for JIT-compiling a function using the Triton compiler.', '用 Triton 编译器即时编译一个函数的装饰器。'),
-          'CUDA 里要考虑每一个线程做什么；Triton 往上抽象了一层：你写的函数描述**一个程序实例**怎么处理**一块数据**，块里的元素怎么分给线程、怎么用上片上存储，交给编译器。',
-          '启动 kernel 时给一个**网格**（grid），比如 `(Q 的块数, batch)`，就会同时启动这么多个程序实例。每个实例用 `tl.program_id(轴)` 知道自己是第几个，据此算出自己该处理哪一块。',
+          'PyTorch 版的分块是两层 Python 循环，一块接一块地算，没有用上 GPU 的并行。要让各个 Q 块真正同时算，就得写 GPU kernel。用 CUDA 写，要考虑每一个线程做什么；Triton 往上抽象了一层：我们写的函数只描述**一个程序实例**怎么处理**一块数据**，块里的元素怎么分给线程、怎么用上片上存储，交给编译器。',
+          '那每个实例怎么知道自己该处理哪一块？启动 kernel 时给一个**网格**（grid），比如 `(Q 的块数, batch)`，就会同时启动这么多个程序实例。每个实例用 `tl.program_id(轴)` 取到自己的编号，据此算出负责哪一块。',
           {
             table: {
               head: ['上一章的 PyTorch 版', '这一章的 Triton 版'],
@@ -47,8 +47,8 @@
           tritondoc('triton.language.program_id(axis)', 'generated/triton.language.program_id.html', 'Returns the id of the current program instance along the given axis.', '返回当前程序实例在给定轴上的编号。'),
           tritondoc('triton.language.load(pointer, mask=None, other=None, …)', 'generated/triton.language.load.html', 'Return a tensor of data whose values are loaded from memory at location defined by pointer:', '返回一个张量，它的值从 pointer 指定的内存位置读出：'),
           tritondoc('triton.language.dot(input, other, …)', 'generated/triton.language.dot.html', 'Returns the matrix product of two blocks.', '返回两个块的矩阵乘积。'),
-          'kernel 拿到的张量只是一个**指向第一个元素的指针**。要读第 b 批、第 r 行、第 c 列，得自己算地址：`指针 + b × 批的步长 + r × 行的步长 + c`。步长（stride）就是在这一维上前进一格要跳过多少个元素，由外面用 `q.stride(0)`、`q.stride(1)` 传进来。',
-          '把行号写成一列、列号写成一行，`rows[:, None] * 行步长 + dims[None, :]` 广播出一整块地址，一次 `tl.load` 就读进 16 × d 个数。为了简单，我们假定序列长度是 16 的倍数，不用处理越界；作业里的完整版本要用 `mask` 把越界的位置遮掉。',
+          '和 PyTorch 不同，kernel 拿到的张量只是一个**指向第一个元素的指针**。要读第 b 批、第 r 行、第 c 列，得自己算地址：`指针 + b × 批的步长 + r × 行的步长 + c`。步长（stride）就是在这一维上前进一格要跳过多少个元素，由外面用 `q.stride(0)`、`q.stride(1)` 传进来。',
+          '一次读一个数太慢，可以一次读一整块：把行号写成一列、列号写成一行，`rows[:, None] * 行步长 + dims[None, :]` 广播出一整块地址，一次 `tl.load` 就读进 16 × d 个数。为了简单，我们假定序列长度是 16 的倍数，不处理越界；作业里的完整版本要用 `mask` 把越界的位置遮掉。',
           '标成 `tl.constexpr` 的参数（块大小、向量维度、是否因果）在编译时就是确定的常数，编译器会为每一组取值单独生成代码。',
         ],
       },
@@ -57,7 +57,7 @@
         title: '没有 GPU 时：解释器模式',
         doc: [
           'Triton 提供一个**解释器模式**：设置环境变量 `TRITON_INTERPRET=1`，`@triton.jit` 的函数就不再编译成 GPU 代码，而是在 CPU 上逐个程序实例地模拟执行。速度很慢，但每一次读写、每一次 `tl.dot` 的结果都是真的，正好用来检查 kernel 写得对不对。',
-          '这个变量必须在 `import triton` 之前设好。我们在文件开头判断：没有 GPU 才打开它。同一份代码放到有 GPU 的机器上，什么都不用改。',
+          '注意这个变量必须在 `import triton` 之前设好。所以我们在文件开头判断：没有 GPU 才打开它。这样同一份代码放到有 GPU 的机器上，什么都不用改。',
           { viz: { kind: 'grid', title: '每个程序实例负责一行块（因果）', frames: trace.tiles(4, 4, true) } },
         ],
       },

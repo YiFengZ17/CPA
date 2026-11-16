@@ -22,7 +22,7 @@
         section: '前置知识',
         title: '显存都花在哪了',
         doc: [
-          '数据并行时，每张卡上都有完整的三样东西。以 fp32 训练、AdamW 优化器为例，每个参数要占：',
+          '先算一笔账：数据并行时，每张卡上都有完整的三样东西。以 fp32 训练、AdamW 优化器为例，每个参数要占：',
           {
             table: {
               head: ['东西', '每个参数占', '说明'],
@@ -42,15 +42,15 @@
         title: '做成一个优化器',
         doc: [
           ref('Optimizer.add_param_group(param_group)', 'generated/torch.optim.Optimizer.add_param_group.html', 'Add a param group to the Optimizer s param_groups.', '给优化器的 param_groups 加一个参数组。'),
-          '作业要求把它写成一个优化器类：`ShardedOptimizer(params, optimizer_cls, **kwargs)`，比如 `ShardedOptimizer(model.parameters(), torch.optim.AdamW, lr=0.01)`。用起来和普通优化器一样：`zero_grad()`、`step()`。',
-          '我们继承 `torch.optim.Optimizer`，在里面另建一个**只管自己那份参数**的真正优化器（AdamW）：',
+          '作业要求把它写成一个优化器类：`ShardedOptimizer(params, optimizer_cls, **kwargs)`，比如 `ShardedOptimizer(model.parameters(), torch.optim.AdamW, lr=0.01)`，用起来和普通优化器一样：`zero_grad()`、`step()`。',
+          '怎么做到「用起来一样」？不妨继承 `torch.optim.Optimizer`，在里面另建一个**只管自己那份参数**的真正优化器（AdamW）：',
           {
             list: [
               '父类的构造函数会把每个参数组交给 `add_param_group`。我们重写它：给组里每个参数指定一个负责的进程（轮流分：第 i 个参数给 rank i % world_size），属于自己的放进内部优化器。',
               '`step()`：内部优化器只更新自己负责的参数；然后对每个参数，从它的负责进程 `broadcast` 新值。',
             ],
           },
-          '梯度同步仍然交给 DDP：用第 11 章的包装类，`step()` 之前梯度已经是平均的了。分片优化器只管「谁来更新、谁存状态」。',
+          '梯度同步仍然交给 DDP：用第 11 章的包装类，`step()` 之前梯度已经是平均的了。分片优化器只管「谁来更新、谁存状态」，分工很清楚。',
         ],
       },
 
