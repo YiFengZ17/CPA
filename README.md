@@ -18,6 +18,8 @@
 | 滑动窗口 | 概念与模板，然后 643、1876、219、209、3、438、76 七道题，从简单到困难 | 8 章 76 页 | Python、C、C++、Java、Rust |
 | 动态规划 | 概念（从递归到填表、四步法），然后 7 个子模块 29 道题：一维递推、子数组、股票、网格、背包、子序列与字符串、区间与计数 | 30 章 248 页 | Python、C、C++、Java、Rust |
 
+新增基础课程：Python 入门与 C 语言入门。范围参照浙江大学公开基础课，省略 OOP 和进阶框架；课程来源与取舍见 [课程设计](docs/plans/2026-11-16-language-foundations.md)。
+
 每章最后都会真实运行一次。页面终端里的输出，全部用真实的 PyTorch、Python、gcc、g++、Java、Rust 跑过，逐行一致。CS336 作业 2 没有 GPU 也真实运行：Triton kernel 用解释器模式（`TRITON_INTERPRET=1`）在 CPU 上执行，分布式用 `gloo` 后端起 4 个进程；计时这类每次都不一样的输出，用正则核对格式。
 
 后续计划（其余 15 类 LeetCode 题、Python 入门、C 语言入门、导出视频）见 [PLAN.md](PLAN.md)。课程文字的写法见 [STYLE.md](STYLE.md)。

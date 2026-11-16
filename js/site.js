@@ -38,7 +38,6 @@
       '<a class="logo" href="#home" aria-label="CPA 首页"><b>CPA</b><i></i><span>Code Programming Animation</span></a>' +
       '<div class="nav-links">' +
       (back ? '<a class="keep" href="#home">全部课程</a>' : '<a href="#boards">课程</a><a href="#algo">题单</a>') +
-      '<a href="https://github.com/YiFengZ17/CPA/blob/main/PLAN.md" target="_blank" rel="noopener">计划</a>' +
       '<a class="keep" href="https://github.com/YiFengZ17/CPA" target="_blank" rel="noopener">GitHub ↗</a>' +
       '</div></nav>'
     );
@@ -382,7 +381,7 @@
       '<div class="eyebrow">' + esc(course.eyebrow || '') + '</div>' +
       '<h4>' + esc(course.title) + '</h4><p>' + esc(course.blurb) + '</p>' +
       '<a class="s-btn s-btn-primary" href="#' + course.id + '">进入课程 →</a></div>' +
-      '<div class="stack is-down" aria-label="按作业顺序的各部分">' + stack + '</div>' +
+      '<div class="stack is-down" aria-label="课程各部分">' + stack + '</div>' +
       '</article>'
     );
   }
@@ -424,6 +423,7 @@
     document.title = 'CPA · Code Programming Animation';
     const transformer = C.byId.transformer;
     const cs336 = C.courses.filter((c) => c.board === 'cs336');
+    const languages = C.courses.filter((c) => c.board === 'lang');
     const last = lastVisit();
     const totals = C.TOPICS.reduce((a, t) => [a[0] + t.easy, a[1] + t.medium, a[2] + t.hard], [0, 0, 0]);
 
@@ -469,8 +469,8 @@
       '<div class="totals-bar" aria-hidden="true"><span class="e" style="flex: ' + totals[0] + '"></span><span class="m" style="flex: ' + totals[1] + '"></span><span class="h" style="flex: ' + totals[2] + '"></span></div>' +
       '<div class="legend"><span><i class="e"></i>简单 ' + totals[0] + '</span><span><i class="m"></i>中等 ' + totals[1] + '</span><span><i class="h"></i>困难 ' + totals[2] + '</span></div></div>' +
       '<div class="map">' + topicTiles() + '</div></div>' +
-      '<div class="board"><div class="board-head"><h3>语言入门</h3><span class="mono">2 门课</span><span class="spacer"></span><span class="mono">规划中</span></div>' +
-      '<div class="pair">' + plannedCards() + '</div></div>' +
+      '<div class="board" id="languages"><div class="board-head"><h3>语言入门</h3></div>' +
+      languages.map(groupCard).join('') + '</div>' +
       '</section>' +
       '</main>' + footer();
 
@@ -532,7 +532,7 @@
       '</div></div></div></header>' +
       '<main class="section wrap" style="padding-top: 64px">' +
       '<div class="section-head"><div><div class="eyebrow">目录</div><h2>课程目录</h2></div>' +
-      '<p>' + esc(c.board === 'algo' ? '先读第一章的概念和模板，再按顺序做题，从简单到困难。每道题都可以在编辑器里随时换语言。' : '后一章接着前一章写完的代码继续写，建议按顺序读。') + '</p></div>' +
+      '<p>' + esc(c.board === 'algo' ? '先读第一章的概念和模板，再按顺序做题，从简单到困难。每道题都可以在编辑器里随时换语言。' : c.chain ? '后一章接着前一章写完的代码继续写，建议按顺序读。' : '每章用一个独立的小程序讲清一个概念，建议按顺序学习。') + '</p></div>' +
       '<ol class="timeline">' + rows + '</ol></main>' + footer();
 
     bindLangPicker('course-langs');
