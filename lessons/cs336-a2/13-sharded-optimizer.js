@@ -65,7 +65,7 @@
           { type: '\n\nfrom cs336_systems.allreduce import setup\nfrom cs336_systems.ddp import DDPIndividualParameters\nfrom cs336_systems.naive_ddp import make_data, make_model, same_params, train_reference', note: '都是 `cs336_systems` 包里前几章写好的：梯度同步用第 11 章的包装类；模型、数据、对照训练来自朴素 DDP 那一章。' },
           { type: '\n\n\nclass ShardedOptimizer(torch.optim.Optimizer):', note: '继承 PyTorch 的优化器基类，`zero_grad`、`param_groups` 这些就都有了。' },
           { type: '\n    def __init__(self, params, optimizer_cls, **kwargs):', note: '和作业要求的接口一致：参数、内部优化器的类、以及传给它的超参数（比如学习率）。' },
-          { type: '\n        self.rank = dist.get_rank()\n        self.world_size = dist.get_world_size()', note: '我是第几个进程，一共几个。' },
+          { type: '\n        self.rank = dist.get_rank()\n        self.world_size = dist.get_world_size()', note: '当前进程是第几个，一共几个。' },
           { type: '\n        self.optimizer_cls = optimizer_cls\n        self.kwargs = kwargs', note: '先存起来，`add_param_group` 里要用它们建内部优化器。' },
           { type: '\n        self.owner = {}\n        self.local = None', note: '`owner`：每个参数由哪个 rank 负责。`local`：只管自己那份参数的内部优化器，第一次加参数组时再建。' },
           { type: '\n        super().__init__(params, kwargs)', note: '最后调用父类的构造函数。它会把参数整理成参数组，逐个交给下面的 `add_param_group`。' },
