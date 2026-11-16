@@ -1,7 +1,7 @@
 /*
  * CS336 A2 · 第 12 章：分桶
- * ddp.py 里加 DDPBucketed：按反向的顺序把参数分进几个桶；一个桶里的梯度都好了，就拼成一个大张量异步 all-reduce 一次。
- * test_ddp.py 加上分桶版的比较。
+ * cs336_systems/ddp.py 里加 DDPBucketed：按反向的顺序把参数分进几个桶；一个桶里的梯度都好了，就拼成一个大张量异步 all-reduce 一次。
+ * 分桶是往年作业的内容（2026 版去掉了），官方测试没有专门的接口；把 adapters.py 的 get_ddp 换成分桶版，用同一个 test_ddp.py 检查。
  */
 (function (root) {
   'use strict';
@@ -12,7 +12,7 @@
     label: '分桶',
     title: '分桶',
     summary: '一个参数一次通信，开销太碎；整个模型一次通信，又没法和反向重叠。折中：按反向的顺序把参数装进几个桶，一个桶满了就通信一次。',
-    files: ['ddp.py', 'test_ddp.py'],
+    files: ['cs336_systems/ddp.py', 'tests/adapters.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -41,7 +41,8 @@
           '**按反向的顺序装桶**：`model.parameters()` 是从第一层到最后一层的顺序，反向传播大致是反过来算的。所以倒着遍历参数，依次往当前的桶里放，放不下了就开一个新桶。这样最先算完的那些梯度落在第一个桶里，第一个桶最先满、最先发出去。',
           '**数着发**：给每个桶记一个计数器。钩子每被调用一次，就给这个参数所在的桶加一；计数等于桶里参数的个数时，这个桶就齐了，马上发出去。',
           '**拼起来、拆回去**：一个桶里的梯度形状各不相同，先用 `_flatten_dense_tensors` 把它们首尾相接拼成一个一维张量，通信完再用 `_unflatten_dense_tensors` 按原来的形状拆开，拷回每个参数的 `.grad`。',
-          '为了在小模型上也分出好几个桶，测试时把桶设得很小：0.001 MB，约 1 KB。我们的模型四个参数张量分别是 1280、128、640、20 字节，倒着装：20 + 640 + 128 = 788 字节一个桶，1280 字节一个桶，一共 2 个。',
+          '为了在小模型上也分出好几个桶，测试时把桶设得很小：0.001 MB，约 1 KB。官方测试的 `ToyModel` 里要训练的三个权重分别是 400、2000、2000 字节，倒着装：2000 字节的已经超过一个桶，各占一个；最后 400 字节的再开一个，一共 3 个桶。不需要梯度的参数不进桶。',
+          '注意一个桶即使空着，也能装下第一个参数，哪怕它比桶还大——否则大参数永远装不进去。',
         ],
       },
 
@@ -49,7 +50,7 @@
       {
         section: '写代码',
         title: '要用到的两个工具函数',
-        file: 'ddp.py',
+        file: 'cs336_systems/ddp.py',
         say: ['回到 `ddp.py`。拼接和拆分梯度用 PyTorch 内部的两个工具函数，先导入。'],
         ops: [
           { type: '\nfrom torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors', after: 'import torch.nn as nn', note: '`_flatten_dense_tensors` 把一组张量首尾相接拼成一个一维张量；`_unflatten_dense_tensors` 按一组张量的形状把它拆回去。' },
@@ -104,15 +105,20 @@
       },
       {
         section: '运行验证',
-        title: '两个版本一起比较',
-        file: 'test_ddp.py',
-        say: ['回到 `test_ddp.py`：导入分桶版，再用它训练一次，桶设成 0.001 MB。打印时带上桶的个数。'],
+        title: '换一行，用同一个测试',
+        file: 'tests/adapters.py',
+        say: [
+          '分桶是往年作业的内容，最新版的 `adapters.py` 里没有它专门的接口。但官方的 DDP 测试只认 `get_ddp` 和 `ddp_on_after_backward`：分桶版的用法和上一章完全一样，构造、前向、`finish_gradient_synchronization`。',
+          '所以只要把 `get_ddp` 返回的实现换掉，同一个测试就能检查分桶版。这正是接口的好处：测试不关心里面怎么实现。',
+        ],
         ops: [
-          { replace: 'from ddp import DDPIndividualParameters', with: 'from ddp import DDPBucketed, DDPIndividualParameters', note: '把分桶版也导入进来。' },
-          { type: '\n    bucketed = train(rank, world_size, lambda m: DDPBucketed(m, bucket_size_mb=0.001))', after: '    overlap = train(rank, world_size, DDPIndividualParameters)', note: '用分桶版再训练一次。`wrap` 要的是一个只接收模型的函数，用 lambda 把桶的大小固定下来。' },
-          { type: '\n        print("分桶 (" + str(len(bucketed.buckets)) + " 个桶):", same_params(bucketed.module, ref))', after: '        print("逐个参数重叠通信:", same_params(overlap.module, ref))', note: '打印桶的个数和比较结果，应该是 2 个桶。' },
-          { pause: 500 },
-          { run: 'python test_ddp.py', output: ['逐个参数重叠通信: True', '分桶 (2 个桶): True'] },
+          { replace: '    from cs336_systems.ddp import DDPIndividualParameters\n\n    return DDPIndividualParameters(module)', with: '    from cs336_systems.ddp import DDPBucketed\n\n    return DDPBucketed(module, bucket_size_mb=0.001)', note: '换成分桶版。测试里的模型很小，每个参数只有一两 KB；桶设成 0.001 MB（约 1 KB），就会分出好几个桶，多个桶的逻辑都能被测到。' },
+          { pause: 300 },
+          {
+            run: 'uv run pytest -q tests/test_ddp.py',
+            output: ['', 'tests/test_ddp.py::test_DistributedDataParallel[ToyModel] PASSED', 'tests/test_ddp.py::test_DistributedDataParallel[ToyModelWithTiedWeights] PASSED', '', '============================== 2 passed in 5.31s ==============================='],
+            pattern: ['', 'tests/test_ddp\\.py::test_DistributedDataParallel\\[ToyModel\\] PASSED', 'tests/test_ddp\\.py::test_DistributedDataParallel\\[ToyModelWithTiedWeights\\] PASSED', '', '=+ 2 passed in \\d+\\.\\d+s =+'],
+          },
         ],
       },
 
@@ -121,7 +127,7 @@
         section: '小结',
         title: '数据并行写完了',
         say: [
-          '两个包装类都和单进程训练一致。分桶版把通信次数从「参数个数」降到了「桶数」，同时保留了和反向的重叠。',
+          '分桶版也通过了同一个测试，和单进程训练一致。它把通信次数从「参数个数」降到了「桶数」，同时保留了和反向的重叠。',
           '作业接着让你在 GPU 上比较几种桶大小：桶太小，开销又变碎；桶太大，第一个桶要等很久才满，重叠变少。在它们中间，有一个最快的大小。',
           '数据并行的每张卡上，模型、梯度、优化器状态都是完整的一份。最后一章先把其中最占地方的——优化器状态——切开。',
         ],

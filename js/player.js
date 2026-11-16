@@ -34,7 +34,9 @@
     btnCourse: $('btn-course'),
     progress: $('progress'),
     outline: $('outline'),
-    sideLabel: $('side-label'),
+    outlineBody: $('outline-body'),
+    tree: $('tree'),
+    filesRoot: $('files-root'),
     sidebar: $('sidebar'),
     scrim: $('scrim'),
     btnOutline: $('btn-outline'),
@@ -194,7 +196,10 @@
   const FILE_ICON =
     '<svg class="file-icon%CLS%" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2H4v12h8V4.5L9.5 2z"/><path d="M9.5 2v2.5H12"/></svg>';
   const fileIcon = (name) => FILE_ICON.replace('%CLS%', ' is-' + (name === DOC ? 'md' : C.langOfFile(name)));
-  const LANG_LABEL = { python: 'Python', c: 'C', cpp: 'C++', java: 'Java', rust: 'Rust', md: 'Markdown' };
+  const BIN_ICON =
+    '<svg class="file-icon is-bin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2H4v12h8V4.5L9.5 2z"/><path d="M6 8v3M8 8v3M10 8v3"/></svg>';
+  const LANG_LABEL = { python: 'Python', c: 'C', cpp: 'C++', java: 'Java', rust: 'Rust', md: 'Markdown', text: '纯文本' };
+  const baseName = (name) => name.split('/').pop();
 
   /* ------------------------------------------------- 文字块（旁白与文档共用） */
 
@@ -375,7 +380,6 @@
 
   // 目录分三层：章 › 小节 › 页。按钮上的 data-step 是「章:页」
   function buildOutline() {
-    el.sideLabel.textContent = course.title;
     el.outline.innerHTML = chapters
       .map((ch, c) => {
         // 子模块：组的第一章前面加一行组名
@@ -433,8 +437,8 @@
         const chapter = section.parentElement.closest('ol');
         if (chapter.hidden) setFolder(chapter.previousElementSibling, true);
         // 只在目录自己的滚动区里滚动，不带动整个页面
-        const top = b.getBoundingClientRect().top - el.sidebar.getBoundingClientRect().top + el.sidebar.scrollTop;
-        const view = el.sidebar;
+        const view = el.outlineBody;
+        const top = b.getBoundingClientRect().top - view.getBoundingClientRect().top + view.scrollTop;
         if (top < view.scrollTop + 40 || top > view.scrollTop + view.clientHeight - 60) {
           view.scrollTop = Math.max(0, top - view.clientHeight / 2);
         }
@@ -450,6 +454,107 @@
     });
     el.outline.querySelectorAll('.outline-chapter').forEach((b) => b.classList.toggle('is-current', Number(b.dataset.chapter) === ci));
   }
+
+  /* ---------------------------------------------------------- 资源管理器 */
+
+  // 左侧的文件树，照 VS Code 的资源管理器：文件夹在前、文件在后，各自按名字排。
+  // 文件名里的「/」就是文件夹。树里列出项目里所有的文件：
+  //   预置的文件（课程开始时就有的，比如作业仓库自带的代码和测试）、写过的文件、课程带的二进制文件（只列出，不能打开）。
+  // 右边的字母和 git 一样：U 是课程里新建的文件，M 是改过的预置文件。
+  // 文件夹默认收起，里面有打开过的文件、或正在看的文件时自动展开（一个都没打开时全部展开）；点过的文件夹按读者的意思来。
+  let presetText = {}; // 预置文件的原始内容，用来判断改没改过
+  let assetNames = []; // 二进制文件
+  const dirChoice = new Map(); // 读者手动展开或收起过的文件夹
+
+  function buildExplorer() {
+    presetText = {};
+    for (const ch of chapters) {
+      for (const [name, text] of Object.entries(ch.preset || {})) if (!(name in presetText)) presetText[name] = text;
+    }
+    assetNames = Object.keys(course.assets || {});
+    dirChoice.clear();
+    el.filesRoot.textContent = (course.project || course.id).toUpperCase();
+    el.tree.dataset.html = '';
+  }
+
+  const parentDirs = (name) => name.split('/').slice(0, -1).map((_, i, a) => a.slice(0, i + 1).join('/'));
+
+  function renderExplorer(shown) {
+    const names = state.order.concat(assetNames.filter((n) => !(n in state.files)));
+    // 先搭出树：每个文件夹记下子文件夹和文件
+    const root = { dirs: new Map(), files: [] };
+    for (const name of names) {
+      const parts = name.split('/');
+      let node = root;
+      for (const part of parts.slice(0, -1)) {
+        if (!node.dirs.has(part)) node.dirs.set(part, { dirs: new Map(), files: [] });
+        node = node.dirs.get(part);
+      }
+      node.files.push(name);
+    }
+    // 该自动展开的文件夹：打开过的文件和正在看的文件所在的文件夹；一个文件都还没打开时（比如总览章），全部展开
+    const hot = new Set();
+    const seen = state.opened.length ? state.opened.concat(shown === DOC ? [] : [shown]) : names;
+    for (const n of seen) parentDirs(n).forEach((d) => hot.add(d));
+    const byName = (a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0);
+    const dirty = phase === 'typing' ? state.active : null;
+    const rows = [];
+    const walk = (node, path, depth) => {
+      for (const part of [...node.dirs.keys()].sort(byName)) {
+        const dir = path ? path + '/' + part : part;
+        const open = dirChoice.has(dir) ? dirChoice.get(dir) : hot.has(dir);
+        rows.push(
+          '<li><button class="tree-row is-dir" type="button" data-dir="' + esc(dir) + '" aria-expanded="' + open + '" style="--depth:' + depth + '">' +
+          '<span class="tree-name">' + esc(part) + '</span></button></li>'
+        );
+        if (open) walk(node.dirs.get(part), dir, depth + 1);
+      }
+      for (const name of node.files.sort((a, b) => byName(a.split('/').pop(), b.split('/').pop()))) {
+        const base = name.split('/').pop();
+        if (!(name in state.files)) {
+          rows.push(
+            '<li><span class="tree-row is-binary" title="二进制文件，不在编辑器里显示" style="--depth:' + depth + '">' +
+            BIN_ICON + '<span class="tree-name">' + esc(base) + '</span></span></li>'
+          );
+          continue;
+        }
+        const badge = !(name in presetText) ? 'U' : state.files[name] !== presetText[name] ? 'M' : '';
+        rows.push(
+          '<li><button class="tree-row' + (name === dirty ? ' is-dirty' : '') + (badge ? ' is-' + badge : '') + '" type="button" data-file="' + esc(name) + '"' +
+          (name === shown ? ' aria-current="true"' : '') + ' title="' + esc(name) + '" style="--depth:' + depth + '">' +
+          fileIcon(name) + '<span class="tree-name">' + esc(base) + '</span><span class="tree-badge">' + badge + '</span></button></li>'
+        );
+      }
+    };
+    walk(root, '', 0);
+    const html = rows.join('');
+    if (el.tree.dataset.html !== html) {
+      el.tree.innerHTML = html;
+      el.tree.dataset.html = html;
+      const on = el.tree.querySelector('[aria-current]');
+      if (on) on.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  el.tree.addEventListener('click', (e) => {
+    const dir = e.target.closest('[data-dir]');
+    if (dir) {
+      dirChoice.set(dir.dataset.dir, dir.getAttribute('aria-expanded') !== 'true');
+      renderExplorer(shownName());
+      return;
+    }
+    const file = e.target.closest('[data-file]');
+    if (file) showTab(file.dataset.file);
+  });
+
+  // 资源管理器和目录两块都能折叠，像 VS Code 侧栏里的分栏
+  document.querySelectorAll('.pane-head').forEach((head) => {
+    head.addEventListener('click', () => {
+      const open = head.getAttribute('aria-expanded') !== 'true';
+      head.setAttribute('aria-expanded', String(open));
+      head.parentElement.classList.toggle('is-collapsed', !open);
+    });
+  });
 
   function toggleOutline() {
     if (narrow.matches) {
@@ -507,6 +612,7 @@
     el.doc.hidden = !isDoc;
     el.btnNotes.setAttribute('aria-pressed', String(isDoc));
     renderTabs(name);
+    renderExplorer(name);
 
     if (isDoc) {
       renderDoc();
@@ -599,7 +705,7 @@
     lineCache = next;
 
     el.code.classList.toggle('is-idle', phase !== 'typing' || paused);
-    el.statusFile.textContent = name;
+    el.statusFile.textContent = baseName(name);
     el.statusPos.textContent = isActive ? '行 ' + (curLine + 1) + '，列 ' + (curCol + 1) : '';
     el.statusLang.textContent = '空格: 4　UTF-8　' + (LANG_LABEL[language] || 'Python');
 
@@ -629,7 +735,9 @@
   }
 
   function renderCrumbs(name, lines, curLine) {
-    const parts = ['<span class="crumb">' + fileIcon(name) + esc(name === DOC ? lesson.docName || '前置知识.md' : name) + '</span>'];
+    const dirs = name === DOC ? [] : name.split('/').slice(0, -1);
+    const parts = dirs.map((d) => '<span class="crumb">' + esc(d) + '</span>');
+    parts.push('<span class="crumb">' + fileIcon(name) + esc(name === DOC ? lesson.docName || '前置知识.md' : baseName(name)) + '</span>');
     if (name === DOC) {
       const onDocStep = steps[index].doc && !peek;
       parts.push('<span class="crumb">' + esc(onDocStep ? steps[index].title : '全部') + '</span>');
@@ -693,20 +801,32 @@
   }
 
   function renderTabs(shown) {
-    const names = (docSteps.length ? [DOC] : []).concat(state.order);
+    // 标签页只给打开过的文件；在资源管理器里点开的预置文件，临时加一个斜体的预览标签
+    const names = (docSteps.length ? [DOC] : []).concat(state.opened);
+    if (shown !== DOC && !names.includes(shown)) names.push(shown);
     const dirty = phase === 'typing' ? state.active : null;
     const html = names
       .map((n) => {
-        const label = n === DOC ? lesson.docName || '前置知识.md' : n;
+        const label = n === DOC ? lesson.docName || '前置知识.md' : baseName(n);
+        // 同名的文件（比如两个 __init__.py）在名字后面淡淡地标出所在的文件夹
+        const twin = n !== DOC && names.some((m) => m !== n && m !== DOC && baseName(m) === label);
+        const dir = twin ? '<span class="tab-dir">' + esc(n.split('/').slice(0, -1).join('/') || '.') + '</span>' : '';
         return (
-          '<button class="tab' + (n === dirty ? ' is-dirty' : '') + '" type="button" role="tab" data-file="' + esc(n) + '" aria-selected="' + (n === shown) + '">' +
-          fileIcon(n) + '<span>' + esc(label) + '</span><span class="tab-dot"></span></button>'
+          '<button class="tab' + (n === dirty ? ' is-dirty' : '') + (state.opened.includes(n) || n === DOC ? '' : ' is-preview') + '" type="button" role="tab" data-file="' + esc(n) + '" aria-selected="' + (n === shown) + '" title="' + esc(n === DOC ? label : n) + '">' +
+          fileIcon(n) + '<span>' + esc(label) + '</span>' + dir + '<span class="tab-dot"></span></button>'
         );
       })
       .join('');
     if (el.tabs.dataset.html !== html) {
       el.tabs.innerHTML = html;
       el.tabs.dataset.html = html;
+      // 标签多了会横向滚动：把正在看的那个滚进视野（只滚标签栏自己）
+      const on = el.tabs.querySelector('[aria-selected="true"]');
+      if (on) {
+        const left = on.offsetLeft - el.tabs.offsetLeft;
+        if (left < el.tabs.scrollLeft) el.tabs.scrollLeft = left;
+        else if (left + on.offsetWidth > el.tabs.scrollLeft + el.tabs.clientWidth) el.tabs.scrollLeft = left + on.offsetWidth - el.tabs.clientWidth;
+      }
     }
   }
 
@@ -948,6 +1068,7 @@
     chapters = got.chapters;
     compiledAll = got.compiledAll;
     buildOutline();
+    buildExplorer();
   }
 
   // 换到第 c 章：之后的 steps、compiled 等都指向这一章

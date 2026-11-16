@@ -1,7 +1,8 @@
 /*
  * CS336 A2 · 第 6 章：FlashAttention-2 的 Triton 版前向
- * flash_triton.py：一个 Triton kernel，每个程序实例负责一块 Q；外面包一层 autograd.Function。
- * 没有 GPU 时用 Triton 的解释器模式在 CPU 上运行。
+ * cs336_systems/flash_triton.py：一个 Triton kernel，每个程序实例负责一块 Q；外面包一层 autograd.Function。
+ * 没有 GPU 时用 Triton 的解释器模式在 CPU 上运行。官方的 Triton 测试没有 GPU 会跳过，
+ * 所以在文件末尾写一段自检，和 cs336_basics 的 scaled_dot_product_attention 比较；adapters.py 照样接上。
  */
 (function (root) {
   'use strict';
@@ -15,7 +16,7 @@
     label: 'Triton',
     title: 'Triton 版前向',
     summary: '把上一章的外层循环交给 GPU：每个程序实例负责一块 Q，自己从显存里读块、在片上算完、只把结果写回去。',
-    files: ['flash_triton.py', 'test_flash.py'],
+    files: ['cs336_systems/flash_triton.py', 'tests/adapters.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -65,13 +66,13 @@
       {
         section: '写代码',
         title: '导入：没有 GPU 就用解释器',
-        file: 'flash_triton.py',
-        say: ['新建 `flash_triton.py`。要先决定 Triton 怎么运行，再导入它。反向传播先借用上一章 PyTorch 版的（第 7 章会把它写好），所以也把它导入进来。'],
+        file: 'cs336_systems/flash_triton.py',
+        say: ['在 `cs336_systems/` 里新建 `flash_triton.py`。要先决定 Triton 怎么运行，再导入它。反向传播先借用上一章 PyTorch 版的（第 7 章会把它写好），所以也把它导入进来。'],
         ops: [
           { type: 'import math\nimport os\n\nimport torch', note: '`os` 用来设环境变量。' },
           { type: '\n\nif not torch.cuda.is_available():\n    os.environ.setdefault("TRITON_INTERPRET", "1")', note: '没有 GPU 时打开解释器模式。用 `setdefault`：如果已经设过这个变量，就尊重原来的设置。' },
           { type: '\n\nimport triton\nimport triton.language as tl', note: '环境变量设好之后才导入 Triton。`tl` 里是写 kernel 用的各种操作。' },
-          { type: '\n\nfrom flash_attention import FlashAttentionPyTorch', note: '反向传播借用 PyTorch 版的实现。' },
+          { type: '\n\nfrom cs336_systems.flash_attention import FlashAttentionPyTorch', note: '反向传播借用 PyTorch 版的实现。它在同一个包里，按包名导入。' },
         ],
       },
       {
@@ -142,18 +143,32 @@
       /* ============================================================== 运行验证 */
       {
         section: '运行验证',
-        title: '两个版本一起比较',
-        file: 'test_flash.py',
-        say: ['回到 `test_flash.py`，把 Triton 版也加进来：两个版本各自在普通和因果两种情况下，和标准注意力比较。'],
+        title: '接口接上',
+        file: 'tests/adapters.py',
+        say: ['先在 `adapters.py` 里把 Triton 版也接上，和上一章一样，返回类本身。'],
         ops: [
-          { type: '\nfrom flash_triton import FlashAttentionTriton', after: 'from flash_attention import FlashAttentionPyTorch', note: '导入 Triton 版。导入时会顺便打开解释器模式。' },
-          {
-            replace: 'for causal in (False, True):\n    out = FlashAttentionPyTorch.apply(q, k, v, causal)\n    ref = attention(q, k, v, is_causal=causal)\n    print("causal" if causal else "full  ", torch.allclose(out, ref, atol=1e-5))',
-            with: 'for name, fn in [("PyTorch", FlashAttentionPyTorch.apply), ("Triton", FlashAttentionTriton.apply)]:\n    for causal in (False, True):\n        out = fn(q, k, v, causal)\n        ref = attention(q, k, v, is_causal=causal)\n        print(name, "causal" if causal else "full  ", torch.allclose(out, ref, atol=1e-5))',
-            note: '外面再套一层循环，两个版本用同样的方式比较，打印时带上名字。',
-          },
+          { replace: '    # For example: return MyTritonFlashAttentionAutogradFunctionClass\n    raise NotImplementedError', with: '    from cs336_systems.flash_triton import FlashAttentionTriton\n\n    return FlashAttentionTriton', note: '同样在函数里面导入。这一点在这里更重要：导入 `flash_triton` 会导入 Triton，只跑 DDP 测试时没必要。' },
+        ],
+      },
+      {
+        section: '运行验证',
+        title: '官方测试要 GPU，先自己检查',
+        file: 'cs336_systems/flash_triton.py',
+        say: [
+          '官方的 Triton 测试开头写着「没有 GPU 就跳过」（`pytest.mark.skipif`），在这台机器上不会真的运行。所以回到 `flash_triton.py`，在末尾加一段自检：直接运行这个文件时，和 A1 的 `scaled_dot_product_attention` 比较。',
+          '尺寸照官方测试来：批 4、长 128、64 维。`scaled_dot_product_attention` 不认识「因果」这个开关，它要的是一个布尔掩码：True 的位置保留，False 的位置遮住。',
+        ],
+        ops: [
+          { type: '\n\n\nif __name__ == "__main__":', note: '只有直接运行这个文件时才做检查；被 `adapters.py` 导入时不会执行。' },
+          { type: '\n    from cs336_basics.model import scaled_dot_product_attention', note: '标准答案：A1 参考实现里的注意力，它会把整个 n × n 的分数矩阵算出来。' },
+          { type: '\n\n    torch.manual_seed(0)\n    q, k, v = (torch.randn(4, 128, 64) for _ in range(3))', note: '和官方测试一样的尺寸：128 正好是 8 块。' },
+          { type: '\n    mask = torch.ones(128, 128, dtype=torch.bool).tril()', note: '因果掩码：下三角是 True。第 i 个查询只能看见第 0 到 i 个键。' },
+          { type: '\n    for is_causal in (False, True):', note: '普通注意力和因果注意力各比较一次。' },
+          { type: '\n        o = FlashAttentionTriton.apply(q, k, v, is_causal)', note: '用 `.apply` 调用 Triton 版，在解释器里逐个程序实例地执行。' },
+          { type: '\n        ref = scaled_dot_product_attention(q, k, v, mask if is_causal else None)', note: '普通注意力不传掩码。' },
+          { type: '\n        print("causal" if is_causal else "full  ", torch.allclose(o, ref, atol=1e-3))', note: '分块改变了浮点运算的顺序，结果不会逐位相同。官方测试允许 10⁻²，这里取严一点的 10⁻³。' },
           { pause: 500 },
-          { run: 'python test_flash.py', output: ['PyTorch full   True', 'PyTorch causal True', 'Triton full   True', 'Triton causal True'] },
+          { run: 'uv run python cs336_systems/flash_triton.py', output: ['full   True', 'causal True'] },
         ],
       },
 

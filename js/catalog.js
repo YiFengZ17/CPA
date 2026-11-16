@@ -23,6 +23,7 @@
   // 由文件名判断语言，语法高亮和注释符号都按它来
   function langOfFile(name) {
     const ext = (/\.(\w+)$/.exec(name || '') || [])[1];
+    if (!ext || ext === 'toml' || ext === 'txt' || ext === 'sh') return 'text';
     return { py: 'python', c: 'c', h: 'c', cpp: 'cpp', cc: 'cpp', java: 'java', rs: 'rust', md: 'md' }[ext] || 'python';
   }
 

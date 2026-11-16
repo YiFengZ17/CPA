@@ -1,7 +1,7 @@
 /*
  * CS336 A2 · 第 7 章：FlashAttention-2 的反向传播
- * 把 flash_attention.py 里留空的 backward 写出来：用 L 重算 P，再按公式求 dQ、dK、dV。
- * Triton 版的 backward 借用它，所以两个版本的梯度一起验证。
+ * 把 cs336_systems/flash_attention.py 里留空的 backward 写出来：用 L 重算 P，再按公式求 dQ、dK、dV。
+ * Triton 版的 backward 借用它：flash_triton.py 末尾的自检加上梯度比较；最后跑整个官方的 test_attention.py。
  */
 (function (root) {
   'use strict';
@@ -14,7 +14,7 @@
     label: '反向',
     title: '反向传播：重算而不是存',
     summary: '用前向存下的 L 重新算出 P，再按链式法则依次求 dV、dP、dS、dQ、dK。中间的 D 让 softmax 的梯度只要一次逐元素运算。',
-    files: ['flash_attention.py', 'test_flash.py'],
+    files: ['cs336_systems/flash_attention.py', 'cs336_systems/flash_triton.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -64,7 +64,7 @@
       {
         section: '写代码',
         title: '取出存下的东西，重算分数',
-        file: 'flash_attention.py',
+        file: 'cs336_systems/flash_attention.py',
         say: ['回到 `flash_attention.py`，把留空的 backward 写出来。第一件事：取出前向存下的张量，用 Q、K 重新算一遍分数矩阵，因果时照样遮住。'],
         ops: [
           { replace: '\n        raise NotImplementedError', with: '\n        L, q, k, v, o = ctx.saved_tensors', note: '把占位的那一行换掉。`saved_tensors` 按存进去的顺序取出来：L、q、k、v、o。' },
@@ -91,18 +91,56 @@
       /* ============================================================== 运行验证 */
       {
         section: '运行验证',
-        title: '输出和梯度一起比较',
-        file: 'test_flash.py',
-        say: ['改测试：q、k、v 要能求梯度；两种实现各算一次输出，再用 `torch.autograd.grad` 求出梯度，输出和三个梯度都要和标准注意力一致。Triton 版的反向借用的就是刚写的这个，所以两个版本都会通过——或者都不通过。'],
+        title: 'Triton 版的梯度',
+        file: 'cs336_systems/flash_triton.py',
+        say: ['Triton 版的反向借用的就是刚写的这个。回到 `flash_triton.py` 末尾的自检，把梯度也比较进去：q、k、v 要能求梯度，两边各用 `torch.autograd.grad` 求出 dq、dk、dv，输出和三个梯度都一致才算通过。'],
         ops: [
-          { replace: 'torch.randn(2, 64, 32)', with: 'torch.randn(2, 64, 32, requires_grad=True)', note: '要对 q、k、v 求梯度，造的时候就打开 `requires_grad`。' },
+          { replace: 'torch.randn(4, 128, 64)', with: 'torch.randn(4, 128, 64, requires_grad=True)', note: '要对 q、k、v 求梯度，造的时候就打开 `requires_grad`。' },
           {
-            replace: '        out = fn(q, k, v, causal)\n        ref = attention(q, k, v, is_causal=causal)\n        print(name, "causal" if causal else "full  ", torch.allclose(out, ref, atol=1e-5))',
-            with: '        ref = attention(q, k, v, is_causal=causal)\n        out = fn(q, k, v, causal)\n        ref_grads = torch.autograd.grad(ref.sum(), (q, k, v))\n        grads = torch.autograd.grad(out.sum(), (q, k, v))\n        same = torch.allclose(out, ref, atol=1e-5) and all(\n            torch.allclose(g, r, atol=1e-5) for g, r in zip(grads, ref_grads))\n        print(name, "causal" if causal else "full  ", same)',
-            note: '对输出求和当作损失，分别求出标准答案和我们实现的 dq、dk、dv。输出相同、三个梯度也都相同，才算通过。',
+            replace: '        print("causal" if is_causal else "full  ", torch.allclose(o, ref, atol=1e-3))',
+            with: '        grads = torch.autograd.grad(o.sum(), (q, k, v))\n        ref_grads = torch.autograd.grad(ref.sum(), (q, k, v))',
+            note: '对输出求和当作损失，分别求出我们实现的和标准答案的 dq、dk、dv。`autograd.grad` 直接返回梯度，不会累加到 `.grad` 上，两次求导互不干扰。',
           },
+          { type: '\n        same = torch.allclose(o, ref, atol=1e-3) and all(\n            torch.allclose(g, r, atol=1e-3) for g, r in zip(grads, ref_grads))', note: '输出一致，三个梯度也都一致。`zip` 把两边的梯度一对一对配起来。' },
+          { type: '\n        print("causal" if is_causal else "full  ", same)', note: '打印每种情况的结论。' },
           { pause: 500 },
-          { run: 'python test_flash.py', output: ['PyTorch full   True', 'PyTorch causal True', 'Triton full   True', 'Triton causal True'] },
+          { run: 'uv run python cs336_systems/flash_triton.py', output: ['full   True', 'causal True'] },
+        ],
+      },
+      {
+        section: '运行验证',
+        title: '跑整个官方的注意力测试',
+        say: [
+          '`test_attention.py` 一共 6 个测试：PyTorch 版和 Triton 版，各自的前向和反向，Triton 的还分普通和因果。反向测试用同一组 q、k、v 和一个随机的 dO，比较 dq、dk、dv。',
+          '这台机器没有 GPU，4 个 Triton 测试会被跳过（SKIPPED），PyTorch 版的前向和反向都要通过。',
+        ],
+        ops: [
+          { pause: 300 },
+          {
+            run: 'uv run pytest -q tests/test_attention.py',
+            output: [
+              '',
+              'tests/test_attention.py::test_flash_forward_pass_pytorch PASSED',
+              'tests/test_attention.py::test_flash_forward_pass_triton[False] SKIPPED',
+              'tests/test_attention.py::test_flash_forward_pass_triton[True] SKIPPED',
+              'tests/test_attention.py::test_flash_backward_pytorch PASSED',
+              'tests/test_attention.py::test_flash_backward_triton[False] SKIPPED (...)',
+              'tests/test_attention.py::test_flash_backward_triton[True] SKIPPED (A...)',
+              '',
+              '========================= 2 passed, 4 skipped in 0.71s =========================',
+            ],
+            pattern: [
+              '',
+              'tests/test_attention\\.py::test_flash_forward_pass_pytorch PASSED',
+              'tests/test_attention\\.py::test_flash_forward_pass_triton\\[False\\] SKIPPED',
+              'tests/test_attention\\.py::test_flash_forward_pass_triton\\[True\\] SKIPPED',
+              'tests/test_attention\\.py::test_flash_backward_pytorch PASSED',
+              'tests/test_attention\\.py::test_flash_backward_triton\\[False\\] SKIPPED \\(\\.\\.\\.\\)',
+              'tests/test_attention\\.py::test_flash_backward_triton\\[True\\] SKIPPED \\(A\\.\\.\\.\\)',
+              '',
+              '=+ 2 passed, 4 skipped in \\d+\\.\\d+s =+',
+            ],
+          },
         ],
       },
 

@@ -2,7 +2,10 @@
  * 课程：Stanford CS336 作业 2（系统）。
  *
  * 13 章接着写同一个项目：后一章从前一章结束时的文件开始（chain）。
- * A2 要用到 A1 写好的 Transformer 语言模型，这里放一份精简版（root.A2.MODEL），在第 2 章作为 preset 直接出现。
+ * 文件的位置和作业仓库完全一样（project: assignment2-systems）：第 1 章把仓库原有的文件作为 preset 放进来（00-repo.js），
+ * 包括作业 1 的参考实现 cs336-basics/cs336_basics 和官方测试 tests/；我们写的代码都在 cs336_systems/ 里，
+ * 通过 tests/adapters.py 接到官方测试上。测试数据 tests/fixtures/*.pt 是二进制文件，作为 assets 随课程带着。
+ * 运行命令和作业一样用 uv run；tools/check-outputs.mjs 核对时换成本地装好依赖的解释器。
  *
  * 所有代码都在 CPU 上真实运行：Triton 用解释器模式（TRITON_INTERPRET=1），分布式用 gloo 后端起 4 个进程。
  * 计时类的输出每次不同，运行操作里另写 pattern（每行一个正则）供 tools/check-outputs.mjs 核对。
@@ -19,82 +22,18 @@
     eyebrow: 'Stanford CS336 · Assignment 2 (Systems)',
     blurb: '作业 2 关心的不是模型本身，而是怎么让它跑得更快、用更多机器：先学会准确地测时间，再用混合精度省显存；把注意力改写成 FlashAttention-2，在 Triton 里写 GPU kernel；最后自己实现数据并行（DDP）的三种版本，以及优化器状态分片。所有代码都在 CPU 上真实跑过。',
     chain: true,
+    project: 'assignment2-systems',
+    assets: {
+      'tests/fixtures/ddp_test_data.pt': 'lessons/cs336-a2/fixtures/ddp_test_data.pt',
+      'tests/fixtures/ddp_test_labels.pt': 'lessons/cs336-a2/fixtures/ddp_test_labels.pt',
+    },
     source: { label: '作业要求', name: 'stanford-cs336/assignment2-systems', url: 'https://github.com/stanford-cs336/assignment2-systems' },
     stats: [
       ['4', '个部分'],
       ['13', '章'],
-      ['9', '个文件'],
+      ['8', '个新文件'],
     ],
   });
-
-  // A1 的 Transformer 语言模型（精简版）。A2 拿它来测速，注意力函数后面还会被 FlashAttention 拿来对照。
-  const MODEL = [
-    'import math',
-    '',
-    'import torch',
-    'import torch.nn as nn',
-    'import torch.nn.functional as F',
-    '',
-    '',
-    'class RMSNorm(nn.Module):',
-    '    def __init__(self, d_model: int, eps: float = 1e-5):',
-    '        super().__init__()',
-    '        self.weight = nn.Parameter(torch.ones(d_model))',
-    '        self.eps = eps',
-    '',
-    '    def forward(self, x):',
-    '        rms = torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)',
-    '        return x / rms * self.weight',
-    '',
-    '',
-    'def attention(q, k, v, is_causal=True):',
-    '    scores = q @ k.transpose(-2, -1) / math.sqrt(q.shape[-1])',
-    '    if is_causal:',
-    '        n_q, n_k = scores.shape[-2:]',
-    '        mask = torch.ones(n_q, n_k, dtype=torch.bool, device=q.device).tril()',
-    '        scores = scores.masked_fill(~mask, float("-inf"))',
-    '    return torch.softmax(scores, dim=-1) @ v',
-    '',
-    '',
-    'class Block(nn.Module):',
-    '    def __init__(self, d_model: int, num_heads: int, d_ff: int):',
-    '        super().__init__()',
-    '        self.num_heads = num_heads',
-    '        self.norm1 = RMSNorm(d_model)',
-    '        self.qkv = nn.Linear(d_model, 3 * d_model, bias=False)',
-    '        self.out = nn.Linear(d_model, d_model, bias=False)',
-    '        self.norm2 = RMSNorm(d_model)',
-    '        self.w1 = nn.Linear(d_model, d_ff, bias=False)',
-    '        self.w2 = nn.Linear(d_ff, d_model, bias=False)',
-    '        self.w3 = nn.Linear(d_model, d_ff, bias=False)',
-    '',
-    '    def forward(self, x):',
-    '        b, n, d = x.shape',
-    '        q, k, v = self.qkv(self.norm1(x)).chunk(3, dim=-1)',
-    '        q, k, v = (t.view(b, n, self.num_heads, -1).transpose(1, 2) for t in (q, k, v))',
-    '        a = attention(q, k, v).transpose(1, 2).reshape(b, n, d)',
-    '        x = x + self.out(a)',
-    '        h = self.norm2(x)',
-    '        return x + self.w2(F.silu(self.w1(h)) * self.w3(h))',
-    '',
-    '',
-    'class TransformerLM(nn.Module):',
-    '    def __init__(self, vocab_size: int, context_length: int, d_model: int,',
-    '                 num_layers: int, num_heads: int, d_ff: int):',
-    '        super().__init__()',
-    '        self.embed = nn.Embedding(vocab_size, d_model)',
-    '        self.pos = nn.Embedding(context_length, d_model)',
-    '        self.blocks = nn.ModuleList(Block(d_model, num_heads, d_ff) for _ in range(num_layers))',
-    '        self.norm = RMSNorm(d_model)',
-    '        self.head = nn.Linear(d_model, vocab_size, bias=False)',
-    '',
-    '    def forward(self, ids):',
-    '        positions = torch.arange(ids.shape[-1], device=ids.device)',
-    '        x = self.embed(ids) + self.pos(positions)',
-    '        for block in self.blocks:',
-    '            x = block(x)',
-    '        return self.head(self.norm(x))',
-  ].join('\n');
 
   const range = (a, b) => Array.from({ length: Math.max(0, b - a) }, (_, i) => a + i);
   const r3 = (x) => Math.round(x * 1000) / 1000;
@@ -156,5 +95,5 @@
     },
   };
 
-  root.A2 = { MODEL, trace };
+  root.A2 = { trace };
 })(typeof window !== 'undefined' ? window : globalThis);

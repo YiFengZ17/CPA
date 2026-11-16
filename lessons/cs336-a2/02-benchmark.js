@@ -1,14 +1,14 @@
 /*
  * CS336 A2 · 第 2 章：端到端基准测试
- * model.py 是 A1 的模型（preset，直接给出）；这一章写 benchmark.py：预热、同步、多次计时取平均。
+ * 模型用作业仓库里 A1 的参考实现 cs336_basics.model.BasicsTransformerLM；
+ * 这一章写 cs336_systems/benchmark.py：预热、同步、多次计时取平均。
  */
 (function (root) {
   'use strict';
 
   const { ref, py } = root.LessonKit;
-  const { MODEL } = root.A2;
 
-  const OUT = ['forward              29.0 ms ± 3.9', 'forward+backward     94.2 ms ± 2.5', 'no warmup            91.4 ms ± 6.7'];
+  const OUT = ['forward              36.6 ms ± 6.3', 'forward+backward    140.5 ms ± 13.8', 'no warmup           128.1 ms ± 4.1'];
   const PATTERN = ['forward +\\d+\\.\\d ms ± \\d+\\.\\d', 'forward\\+backward +\\d+\\.\\d ms ± \\d+\\.\\d', 'no warmup +\\d+\\.\\d ms ± \\d+\\.\\d'];
 
   root.Catalog.addChapter('cs336-a2', {
@@ -17,29 +17,28 @@
     label: '测速',
     title: '端到端基准测试',
     summary: '先学会测时间：预热、等 GPU 算完、多次取平均。给 A1 的模型测一次前向、前向加反向各要多久。',
-    files: ['benchmark.py', 'model.py'],
-    preset: { 'model.py': MODEL },
+    files: ['cs336_systems/benchmark.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
       {
         section: '前置知识',
-        title: 'A1 的模型已经在 model.py 里',
+        title: 'A1 的模型在 cs336_basics 里',
         doc: [
-          '作业 2 测的是作业 1 写好的语言模型。编辑器里的 `model.py` 已经放好了一份精简版，结构和 A1 一样：',
+          '作业 2 测的是作业 1 的语言模型。仓库里的 `cs336-basics/cs336_basics/model.py` 就是它的参考实现，可以在左边的资源管理器里点开看。我们要用的是下面这几样：',
           {
             table: {
-              head: ['部件', '做什么'],
+              head: ['名字', '做什么'],
               rows: [
-                ['`RMSNorm`', '把每个向量按均方根归一化，再乘一个可学习的缩放'],
-                ['`attention(q, k, v, is_causal)`', '缩放点积注意力：算出完整的 n×n 分数矩阵，因果掩码，softmax，再乘 V'],
-                ['`Block`', '预归一化（pre-norm）的一层：多头注意力 + SwiGLU 前馈网络，各带一条残差'],
-                ['`TransformerLM`', '词嵌入 + 位置嵌入 → 若干层 Block → 最后的 RMSNorm → 输出每个词的分数'],
+                ['`BasicsTransformerLM(vocab_size, context_length, d_model, num_layers, num_heads, d_ff, rope_theta=10000.0)`', '整个语言模型：词嵌入 → 若干层 `TransformerBlock` → 最后的 `RMSNorm` → `lm_head` 输出每个词的分数'],
+                ['`TransformerBlock`', '预归一化（pre-norm）的一层：`CausalMultiHeadSelfAttention`（带 RoPE）+ `SwiGLU` 前馈网络，各带一条残差'],
+                ['`scaled_dot_product_attention(Q, K, V, mask)`', '缩放点积注意力：算出完整的 n×n 分数矩阵，`mask` 为 False 的位置填负无穷，softmax，再乘 V'],
+                ['`cs336_basics.nn_utils.cross_entropy(inputs, targets)`', '交叉熵损失：`inputs` 是 (…, 词表大小) 的分数，`targets` 是同样前几维的词编号，返回平均损失'],
               ],
             },
           },
-          '和 A1 唯一的不同：A1 用旋转位置编码（RoPE），这里为了篇幅换成了可学习的位置嵌入。这不影响作业 2 要测的任何东西。',
-          '注意 `attention` 这个函数：它会把 n×n 的分数矩阵整个算出来。第 4 到 7 章的 FlashAttention 要解决的正是这件事，到时候它就是我们对照的标准答案。',
+          '这些名字和参数，就是作业 1 要求实现的接口。A2 的代码只依赖这些接口，所以换成你自己作业 1 的实现也能跑——前提是接口一致。',
+          '注意 `scaled_dot_product_attention`：它会把 n×n 的分数矩阵整个算出来。第 4 到 7 章的 FlashAttention 要解决的正是这件事，到时候它就是我们对照的标准答案。',
         ],
       },
       {
@@ -75,12 +74,12 @@
       {
         section: '写代码',
         title: '导入，和「等 GPU 算完」',
-        file: 'benchmark.py',
-        say: ['新建 `benchmark.py`。先想好要用到什么：计时、算平均和标准差、PyTorch，以及模型。第一个小函数解决第一个坑：取时间前等 GPU 算完。'],
+        file: 'cs336_systems/benchmark.py',
+        say: ['在 `cs336_systems/` 里新建 `benchmark.py`。先想好要用到什么：计时、算平均和标准差、PyTorch，以及 A1 的模型和损失函数。第一个小函数解决第一个坑：取时间前等 GPU 算完。'],
         ops: [
           { type: 'import statistics\nimport timeit', note: '要计时，用标准库的 `timeit`；要算平均值和标准差，用 `statistics`。' },
-          { type: '\n\nimport torch\nimport torch.nn.functional as F', note: '`F` 里有反向传播要用的交叉熵损失。' },
-          { type: '\n\nfrom model import TransformerLM', note: '要测的对象：A1 的语言模型。' },
+          { type: '\n\nimport torch', note: '模型和数据都是 PyTorch 的张量。' },
+          { type: '\n\nfrom cs336_basics.model import BasicsTransformerLM\nfrom cs336_basics.nn_utils import cross_entropy', note: '要测的对象：A1 的语言模型；反向传播前要算损失，也用 A1 的交叉熵。都从 `cs336_basics` 这个包里导入——它在 `cs336-basics/` 文件夹里，`uv` 已经把它装进了环境。' },
           { pause: 300 },
           { type: '\n\n\ndef sync():', note: '一个小函数，专门处理「GPU 是异步的」这个坑。' },
           { type: '\n    if torch.cuda.is_available():\n        torch.cuda.synchronize()', note: '有 GPU 时，等它把交出去的活都干完再返回。CPU 上的运算本来就是同步的，什么都不用做——所以同一份代码在两边都能用。' },
@@ -107,11 +106,11 @@
       {
         section: '写代码',
         title: '准备模型和一批数据',
-        say: ['主程序先造一个小号的模型和一批随机数据。作业里批大小是 4，词表 10000；我们在 CPU 上把模型缩到 4 层、宽 256，上下文 128。'],
+        say: ['主程序先用 A1 的接口造一个小号的模型，再造一批随机数据。作业里批大小是 4，词表 10000；我们在 CPU 上把模型缩到 4 层、宽 256，上下文 128。'],
         ops: [
           { type: '\n\n\nif __name__ == "__main__":\n    torch.manual_seed(0)', note: '直接运行这个文件时才测速。固定随机种子，每次的模型和数据都一样。' },
           { type: '\n    vocab = 10000', note: '词表大小，和作业一致。' },
-          { type: '\n    model = TransformerLM(vocab_size=vocab, context_length=128, d_model=256,\n                          num_layers=4, num_heads=4, d_ff=1024)', note: 'CPU 能承受的规模：4 层，宽 256，4 个头，前馈层宽 1024（宽度的 4 倍）。到了 GPU 上，换成作业表格里的规模就行。' },
+          { type: '\n    model = BasicsTransformerLM(vocab_size=vocab, context_length=128, d_model=256,\n                                num_layers=4, num_heads=4, d_ff=1024)', note: '参数名和 A1 的接口一一对应。CPU 能承受的规模：4 层，宽 256，4 个头，前馈层宽 1024（宽度的 4 倍）。到了 GPU 上，换成作业表格里的规模就行。`rope_theta` 用默认的 10000。' },
           { type: '\n    x = torch.randint(0, vocab, (4, 128))\n    y = torch.randint(0, vocab, (4, 128))', note: '测速不需要真实的文本，随机的词编号就够：一批 4 条、每条 128 个词，y 当作要预测的目标。' },
         ],
       },
@@ -122,8 +121,7 @@
         ops: [
           { type: '\n\n    def forward():\n        model(x)', note: '只做前向：把这批数据送进模型，算出每个位置的分数。' },
           { type: '\n\n    def forward_backward():', note: '前向加反向：训练时每一步真正要做的事。' },
-          { type: '\n        loss = F.cross_entropy(model(x).view(-1, vocab), y.view(-1))', note: '前向之后算交叉熵损失。`cross_entropy` 要的是二维的分数和一维的目标，所以先把「批 × 位置」摊平成一维。' },
-          { type: '\n        loss.backward()', note: '反向传播，算出所有参数的梯度。测的就是前向加这一步一共多久。' },
+          { type: '\n        cross_entropy(model(x), y).backward()', note: '前向之后算交叉熵损失，再反向传播算出所有参数的梯度。A1 的 `cross_entropy` 直接接收 (批, 位置, 词表) 的分数和 (批, 位置) 的目标，不用先摊平。' },
         ],
       },
       {
@@ -139,7 +137,7 @@
           { type: '\n        print(f"{name:<18}{mean * 1000:7.1f} ms ± {std * 1000:.1f}")', note: '秒换成毫秒。`:<18` 让名字左对齐占 18 格，`:7.1f` 让数字右对齐、保留一位小数，几行能上下对齐。' },
           { type: '\n    mean, std = benchmark(forward_backward, warmup=0)\n    print(f"{\'no warmup\':<18}{mean * 1000:7.1f} ms ± {std * 1000:.1f}")', note: '对照组：不预热，第一次的开销会被算进来。' },
           { pause: 500 },
-          { run: 'python benchmark.py', output: OUT, pattern: PATTERN },
+          { run: 'uv run python cs336_systems/benchmark.py', output: OUT, pattern: PATTERN },
         ],
       },
 
@@ -148,7 +146,7 @@
         section: '小结',
         title: '读懂这几个数',
         say: [
-          '前向加反向大约是只做前向的 3 倍：反向传播要为每一次矩阵乘法再算两次乘法（对输入的梯度、对权重的梯度）。',
+          '前向加反向是只做前向的三四倍：反向传播要为每一次矩阵乘法再算两次乘法（对输入的梯度、对权重的梯度），再加上损失函数和保存中间结果的开销。',
           '在 CPU 上，预热与否差别不大，因为没有 kernel 要编译。到了 GPU 上，不预热的第一次往往慢得多，标准差也会大很多——这正是要预热的原因。',
           '下一章看另一个省时间、省显存的办法：混合精度。',
         ],

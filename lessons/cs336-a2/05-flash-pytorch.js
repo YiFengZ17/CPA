@@ -1,7 +1,7 @@
 /*
  * CS336 A2 · 第 5 章：FlashAttention-2 的 PyTorch 版前向
- * flash_attention.py：autograd.Function，分块 + 在线 softmax，保存 L；反向先留空。
- * test_flash.py：和 model.py 里的标准注意力比较输出。
+ * cs336_systems/flash_attention.py：autograd.Function，分块 + 在线 softmax，保存 L；反向先留空。
+ * 在 tests/adapters.py 里接上，跑官方测试 test_flash_forward_pass_pytorch。
  */
 (function (root) {
   'use strict';
@@ -15,7 +15,7 @@
     label: 'PyTorch',
     title: 'PyTorch 版前向',
     summary: '先用纯 PyTorch 把分块和在线 softmax 写对：外层一块 Q，内层一块块读 K、V，最后存下输出和每行的 logsumexp。',
-    files: ['flash_attention.py', 'test_flash.py'],
+    files: ['cs336_systems/flash_attention.py', 'tests/adapters.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -59,8 +59,8 @@
       {
         section: '写代码',
         title: '类的外壳，和要用到的尺寸',
-        file: 'flash_attention.py',
-        say: ['新建 `flash_attention.py`。先写出 autograd.Function 的外壳，再在 forward 开头把要用的尺寸都准备好：块大小、序列长度、缩放系数，以及装输出 o 和 L 的空张量。'],
+        file: 'cs336_systems/flash_attention.py',
+        say: ['在 `cs336_systems/` 里新建 `flash_attention.py`。先写出 autograd.Function 的外壳，再在 forward 开头把要用的尺寸都准备好：块大小、序列长度、缩放系数，以及装输出 o 和 L 的空张量。'],
         ops: [
           { type: 'import math\n\nimport torch', note: '缩放系数要开平方，用 `math`。' },
           { type: '\n\n\nclass FlashAttentionPyTorch(torch.autograd.Function):', note: '继承 `torch.autograd.Function`，前向和反向都由我们自己写。' },
@@ -126,20 +126,25 @@
       /* ============================================================== 运行验证 */
       {
         section: '运行验证',
-        title: '和标准注意力比较',
-        file: 'test_flash.py',
+        title: '接到官方测试上',
+        file: 'tests/adapters.py',
         say: [
-          ref('torch.allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False)', 'generated/torch.allclose.html', 'This function checks if input and other satisfy the condition: ∣input − other∣ ≤ atol + rtol × ∣other∣ elementwise, for all elements of input and other.', '检查 input 和 other 是否每个元素都满足 ∣input − other∣ ≤ atol + rtol × ∣other∣。'),
-          '新建 `test_flash.py`：随机造 q、k、v，分别用 FlashAttention 和 `model.py` 里的 `attention` 算一遍，看两者是否几乎相等。分块改变了浮点运算的顺序，结果不会逐位相同，允许 10<sup>-5</sup> 的误差。',
+          '官方测试不认识我们的类名，它只调用 `tests/adapters.py` 里的 `get_flashattention_autograd_function_pytorch()`，要它返回一个 autograd.Function 的**类**（不是实例）。打开这个文件，把函数体里的 `raise NotImplementedError` 换成我们的类。',
         ],
         ops: [
-          { type: 'import torch\n\nfrom flash_attention import FlashAttentionPyTorch\nfrom model import attention', note: '要比较的两个东西：刚写的 FlashAttention，和 model.py 里的标准注意力。' },
-          { type: '\n\ntorch.manual_seed(0)\nq, k, v = (torch.randn(2, 64, 32) for _ in range(3))', note: '批 2，序列长 64（正好 4 块），每个向量 32 维。' },
-          { type: '\nfor causal in (False, True):', note: '普通注意力和因果注意力都要验证。' },
-          { type: '\n    out = FlashAttentionPyTorch.apply(q, k, v, causal)\n    ref = attention(q, k, v, is_causal=causal)', note: '用 `.apply` 调用自定义的 Function；标准答案用 model.py 里的写法。' },
-          { type: '\n    print("causal" if causal else "full  ", torch.allclose(out, ref, atol=1e-5))', note: '误差在 10⁻⁵ 以内就算一致。名字补齐成一样宽，两行能对齐。' },
-          { pause: 500 },
-          { run: 'python test_flash.py', output: ['full   True', 'causal True'] },
+          { replace: '    # For example: return MyFlashAttnAutogradFunctionClass\n    raise NotImplementedError', with: '    from cs336_systems.flash_attention import FlashAttentionPyTorch\n\n    return FlashAttentionPyTorch', note: '在函数里面导入：只有测试真的用到它时才导入，别的测试（比如 DDP）不会被这个文件拖慢。返回的是类本身，测试会调用它的 `.apply`。' },
+        ],
+      },
+      {
+        section: '运行验证',
+        title: '跑官方的前向测试',
+        say: [
+          '`tests/test_attention.py` 里的 `test_flash_forward_pass_pytorch` 做了三件事：造批 4、长 128、64 维的 q、k、v，调用 `.apply(q, k, v, False)`；在输出的 `grad_fn.saved_tensors` 里找形状是 (批, 查询数) 的张量——必须**正好一个**，那就是 L；最后把输出和 L 跟一次算完整个矩阵的结果比较，允许 10<sup>-2</sup> 的误差。',
+          '我们保存的 q、k、v、o 都是三维的，只有 L 是 (4, 128)，正好满足它的要求。`-k` 按名字只选这一个测试，`-q` 让输出简洁一些。',
+        ],
+        ops: [
+          { pause: 400 },
+          { run: 'uv run pytest -q -k test_flash_forward_pass_pytorch', output: ['', 'tests/test_attention.py::test_flash_forward_pass_pytorch PASSED', '', '======================= 1 passed, 13 deselected in 0.79s ======================='], pattern: ['', 'tests/test_attention\\.py::test_flash_forward_pass_pytorch PASSED', '', '=+ 1 passed, 13 deselected in \\d+\\.\\d+s =+'] },
         ],
       },
 

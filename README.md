@@ -11,7 +11,7 @@
 | 课程 | 内容 | 规模 | 语言 |
 |---|---|---|---|
 | 从零手写 Transformer | 嵌入、位置编码、层归一化、前馈网络、多头注意力、编码器、解码器、组装成模型 | 6 章 95 页，`model.py` 写到 241 行 | Python（PyTorch） |
-| CS336 作业 2：系统 | 斯坦福 CS336 作业 2：端到端测速、混合精度、FlashAttention-2（PyTorch 版、Triton kernel、反向传播）、DDP 的三个版本、优化器状态分片 | 13 章 94 页，9 个文件 | Python（PyTorch、Triton） |
+| CS336 作业 2：系统 | 斯坦福 CS336 作业 2：端到端测速、混合精度、FlashAttention-2（PyTorch 版、Triton kernel、反向传播）、DDP 的三个版本、优化器状态分片 | 13 章 99 页，文件结构和作业仓库一致，接上官方测试 | Python（PyTorch、Triton） |
 | 哈希表与数组 | 概念（哈希表怎么一步找到、冲突、计数数组、原地标记），然后 1431、383、1、169、448、1331、49、128、705 九道题，最后亲手实现哈希集合 | 10 章 70 页 | Python、C、C++、Java、Rust |
 | 双指针 | 概念（每一步排除一批、三种指针的模板），然后「相向指针」125、345、LCR 006、11、15、42，「同向指针」283、392、844、75，「快慢指针」287 | 12 章 74 页 | Python、C、C++、Java、Rust |
 | 前缀和与前后缀分解 | 概念（区间和 = 两个前缀相减、前缀和配哈希表、前后缀分解），然后 1732、303、560、238 四道题 | 5 章 29 页 | Python、C、C++、Java、Rust |
@@ -50,7 +50,8 @@
 | `L` / 状态栏的语言名 | 算法课程换语言：同一页的代码和思路换成那种语言的版本 |
 | `T` / 调色板图标 | 选择颜色主题，`↑` `↓` 换风格、`←` `→` 换亮暗，即时预览 |
 | 标题栏左边的 CPA | 回到课程页 |
-| 左侧目录 | 按「章 › 小节 › 页」排列，点任意一页跳过去，右边的数字是看过了几页 |
+| 左侧资源管理器 | 上半是文件树，和 VS Code 一样：文件夹在前，点文件夹展开或收起，点文件在编辑器里打开（预置的文件以斜体的预览标签打开）；U 是课程里新建的文件，M 是改过的原有文件 |
+| 左侧目录 | 资源管理器下半，按「章 › 小节 › 页」排列，点任意一页跳过去，右边的数字是看过了几页 |
 | 旁白里的一条念头 | 鼠标移上去，编辑器里对应的那一行会亮起来 |
 | 右下角「自动播放」 | 自动打字、自动翻页；页里有演示动图时，等动图播完再翻页 |
 
@@ -74,14 +75,14 @@ js/site.js                  展厅：首页和课程页
 js/main.js                  路由：按网址显示展厅或编辑器
 lessons/kit.js              课程脚本的公共写法：引用各语言官方文档和论文
 lessons/transformer/        从零手写 Transformer（00-course.js 定义课程，01-06 是各章）
-lessons/cs336-a2/           CS336 作业 2（00-course.js 定义课程、A1 模型和演示的帧，01-13 是各章，接着写同一个项目）
+lessons/cs336-a2/           CS336 作业 2（00-course.js 定义课程和演示的帧，00-repo.js 是作业仓库原有的文件，fixtures/ 是测试数据，01-13 是各章，接着写同一个项目）
 lessons/hash-table/         哈希表与数组（00-course.js 定义课程和演示的帧，01 概念，02-10 九道题）
 lessons/two-pointers/       双指针（00-course.js 定义课程和演示的帧，01 概念，02-12 十一道题，按三种指针分组）
 lessons/prefix-sum/         前缀和与前后缀分解（00-course.js 定义课程和演示的帧，01 概念，02-05 四道题）
 lessons/sliding-window/     滑动窗口（00-course.js 定义课程和演示的帧，01 概念，02-08 七道题）
 lessons/dynamic-programming/ 动态规划（00-course.js 定义课程，00-course.js 与 00-traces.js 生成 DP 表的帧，01 概念，02-30 每题一个文件，按子模块分组）
 tools/verify.mjs            校验所有课程和语言，并导出每章写完后的文件
-tools/check-outputs.mjs     真实运行每章最后的终端命令，和脚本里写的输出逐行比较
+tools/check-outputs.mjs     真实运行每章最后的终端命令（接续写的课程每一步的运行都核对），和脚本里写的输出逐行比较
 tools/bundle.mjs            合并成单个 HTML 文件
 tools/deploy.sh             把站点文件发布到 gh-pages 分支（GitHub Pages）
 ```
@@ -171,7 +172,7 @@ node tools/verify.mjs /tmp/out
 node tools/check-outputs.mjs /tmp/out python3
 ```
 
-在每章导出的目录里执行脚本里写的终端命令（`python3`、`gcc`、`g++`、`javac`、`rustc`），和脚本里写的输出逐行比较。第二个参数是 Python 解释器，Transformer 课程需要装好 PyTorch，CS336 作业 2 还需要 Triton。第三个参数可选，只核对 id 以它开头的章，比如 `dp-1143`。
+在每章导出的目录里执行脚本里写的终端命令（`python3`、`gcc`、`g++`、`javac`、`rustc`），和脚本里写的输出逐行比较。第二个参数是 Python 解释器，Transformer 课程需要装好 PyTorch，CS336 作业 2 还需要 Triton、pytest、einops、einx、jaxtyping；作业 2 的命令以 `uv run` 开头，核对时换成这个解释器，并把 `cs336-basics` 加进 `PYTHONPATH`。接续写的课程，章里中途的运行也会核对：`verify.mjs` 把那一步写完时的文件另存到 `章@步号/`。第三个参数可选，只核对 id 以它开头的章，比如 `dp-1143`。
 
 ## 以后的方向
 
@@ -179,7 +180,7 @@ node tools/check-outputs.mjs /tmp/out python3
 
 ## 内容来源
 
-- CS336 作业 2 的要求来自 [stanford-cs336/assignment2-systems](https://github.com/stanford-cs336/assignment2-systems)，题目用自己的话转述，代码是这里自己写的实现；`model.py` 是作业 1 模型的精简版（位置编码用可学习的嵌入代替 RoPE）。
+- CS336 作业 2 的要求来自 [stanford-cs336/assignment2-systems](https://github.com/stanford-cs336/assignment2-systems)，题目用自己的话转述，代码是这里自己写的实现。项目里原有的文件（作业 1 的参考实现 `cs336-basics/`、官方测试 `tests/`、`pyproject.toml` 等）照仓库原样放进来（版本 26.1.4），它们属于 Stanford University，按 MIT 许可证使用，许可证随文件一起放在项目根目录的 `LICENSE`。
 - Transformer 的代码来自 [hkproj/pytorch-transformer](https://github.com/hkproj/pytorch-transformer) 的 `model.py`，书写顺序参考 Umar Jamil 的视频 [Coding a Transformer from scratch on PyTorch](https://www.youtube.com/watch?v=ISNdQcPhsts)：类按视频里写的先后排列。和原文件相比有几处小调整：
   - 说明性的英文注释不保留，只保留标注张量形状的注释；
   - 关键字参数两边的空格按 PEP 8 去掉（如 `dim=-1`），`ResidualConnection` 多出的一层缩进改成标准的 4 格；

@@ -54,6 +54,8 @@
       builtins: set(''),
       self: set(''),
     },
+    // 配置文件、许可证这类纯文本：只认 # 注释、字符串和数字
+    text: { kw: set(''), kw2: set('true false'), types: set(''), builtins: set(''), self: set(''), hashComment: true },
   };
 
   const RE_NUM = /(?:0[xX][0-9a-fA-F_]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)(?:[a-zA-Z]\w*)?/y;

@@ -21,7 +21,7 @@
         section: 'FlashAttention-2',
         title: 'n×n 的矩阵有多大',
         doc: [
-          '`model.py` 里的 `attention` 分三步：算分数 `S = QKᵀ/√d`，做 softmax 得到 `P`，再算 `P V`。中间的 S 和 P 都是 **n × n** 的——n 是序列长度。',
+          'A1 的 `scaled_dot_product_attention`（在 `cs336_basics/model.py` 里）分三步：算分数 `S = QKᵀ/√d`，做 softmax 得到 `P`，再算 `P V`。中间的 S 和 P 都是 **n × n** 的——n 是序列长度。',
           {
             table: {
               head: ['序列长度 n', '一个头的 S（fp32）', '批 4、16 个头'],

@@ -7,8 +7,24 @@
 //   2. 逐格播放，检查动画结果和直接跳转的结果相同，语法高亮切出来的行和源码一一对上；
 //   3. 把每章结束时的全部文件存到 输出目录/课程/[语言/]章/，方便拿去真的运行一遍（见 check-outputs.mjs）。
 // 接续写的课程（如 Transformer）后一章从前一章结束时的代码开始。
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+// 接续写的课程，章里中途也有运行时，再把那一步写完时的文件存到 章@步号/，让中途的运行也能核对。
+// 文件名里的「/」是文件夹；课程带的二进制文件（course.assets）一起复制过去。
+import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+function exportFiles(dir, course, st) {
+  for (const name of st.order) {
+    mkdirSync(dirname(join(dir, name)), { recursive: true });
+    writeFileSync(join(dir, name), st.files[name] + '\n');
+  }
+  for (const [name, src] of Object.entries(course.assets || {})) {
+    mkdirSync(dirname(join(dir, name)), { recursive: true });
+    copyFileSync(join(ROOT, src), join(dir, name));
+  }
+}
 import { Catalog, Engine, Highlight, eachVariant, chapterDir } from './load.mjs';
 
 const outDir = process.argv[2];
@@ -42,7 +58,12 @@ try {
       if (outDir) {
         const dir = chapterDir(outDir, course, lang, lesson);
         mkdirSync(dir, { recursive: true });
-        for (const name of final.order) writeFileSync(join(dir, name), final.files[name] + '\n');
+        exportFiles(dir, course, final);
+        if (course.chain) {
+          lesson.steps.forEach((step, i) => {
+            if ((step.ops || []).some((o) => o.run)) exportFiles(dir + '@' + (i + 1), course, compiled.after[i]);
+          });
+        }
       }
     }
     const pages = chapters.reduce((n, c) => n + c.lesson.steps.length, 0);

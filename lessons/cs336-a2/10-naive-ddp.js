@@ -1,6 +1,6 @@
 /*
  * CS336 A2 · 第 10 章：朴素 DDP
- * naive_ddp.py：参数从 rank 0 广播；每个进程算自己那份数据的梯度；反向结束后逐个参数 all-reduce 取平均。
+ * cs336_systems/naive_ddp.py：参数从 rank 0 广播；每个进程算自己那份数据的梯度；反向结束后逐个参数 all-reduce 取平均。
  * 和单进程用整批数据训练的结果比较。make_model、make_data 等工具后面几章会导入。
  */
 (function (root) {
@@ -14,7 +14,7 @@
     label: '朴素 DDP',
     title: '朴素 DDP',
     summary: '最直接的数据并行：开始前广播参数，每一步反向之后把每个参数的梯度 all-reduce 取平均。结果要和单进程整批训练一模一样。',
-    files: ['naive_ddp.py'],
+    files: ['cs336_systems/naive_ddp.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -49,11 +49,11 @@
       {
         section: '写代码',
         title: '模型、数据和单进程对照',
-        file: 'naive_ddp.py',
-        say: ['新建 `naive_ddp.py`。先写几个后面都要用的工具：造模型（种子可选）、造数据（每次都一样）、单进程训练作对照、比较两个模型的参数。'],
+        file: 'cs336_systems/naive_ddp.py',
+        say: ['在 `cs336_systems/` 里新建 `naive_ddp.py`。先写几个后面都要用的工具：造模型（种子可选）、造数据（每次都一样）、单进程训练作对照、比较两个模型的参数。'],
         ops: [
           { type: 'import torch\nimport torch.distributed as dist\nimport torch.multiprocessing as mp\nimport torch.nn as nn\nimport torch.nn.functional as F', note: '分布式通信、多进程、搭模型、损失函数。' },
-          { type: '\n\nfrom allreduce import setup', note: '加入进程组的函数，上一章写过，直接导入。' },
+          { type: '\n\nfrom cs336_systems.allreduce import setup', note: '加入进程组的函数，上一章写过。它在 `cs336_systems` 包里，按包名导入。' },
           { type: '\n\n\ndef make_model(seed):\n    torch.manual_seed(seed)\n    return nn.Sequential(nn.Linear(10, 32), nn.ReLU(), nn.Linear(32, 5))', note: '造模型前先设种子：同一个种子造出的参数完全一样，不同的种子就不一样。' },
           { type: '\n\n\ndef make_data():\n    g = torch.Generator().manual_seed(1)\n    return torch.randn(16, 10, generator=g), torch.randn(16, 5, generator=g)', note: '数据用一个单独的随机数生成器，每个进程、每次调用拿到的都是同样的 16 条。' },
           { type: '\n\n\ndef train_reference(steps, make_opt):', note: '单进程的对照训练：从 rank 0 的初始参数开始，每一步用全部 16 条数据。优化器由调用方决定，最后一章还要换成 AdamW。' },
@@ -105,7 +105,7 @@
           { type: '\n    dist.barrier()\n    dist.destroy_process_group()', note: 'rank 0 多做了一次对照训练，其他进程早就到了这里。'+'所有进程先在这里等齐，再一起退出进程组。rank 0 还托管着大家集合用的那个地址，如果它先退出，还没走到这里的进程可能会一直卡住。' },
           { type: '\n\n\nif __name__ == "__main__":\n    mp.spawn(run, args=(4,), nprocs=4, join=True)', note: '起 4 个进程。' },
           { pause: 500 },
-          { run: 'python naive_ddp.py', output: ['和单进程训练一致: True'] },
+          { run: 'uv run python cs336_systems/naive_ddp.py', output: ['和单进程训练一致: True'] },
         ],
       },
 
