@@ -23,7 +23,7 @@
         section: '前置知识',
         title: '这一章要写什么',
         doc: [
-          '上一章的两个零件把一句话变成了 `(batch, seq_len, d_model)` 的向量。这一章再写两个零件，它们都不改变形状，是后面编码器和解码器里反复用到的基础件。',
+          '上一章把一句话变成了 `(batch, seq_len, d_model)` 的向量。在写注意力之前，我们先写两个更简单的基础件：层归一化和前馈网络。它们都不改变形状，后面的编码器和解码器会反复用到。',
           {
             flow: [
               { label: '向量', sub: '(batch, seq_len, 512)' },
@@ -48,8 +48,8 @@
         doc: [
           '数据经过一层层计算，向量里的数可能越来越大，也可能越来越小，后面的层就很难学。那就把每个向量拉回同一尺度：对每个词的向量，单独算出它这 `d_model` 个数的平均值和标准差，减去平均值，再除以标准差。这就是层归一化。',
           { formula: ['LayerNorm(x) = α · (x − mean) / (std + ε) + bias'] },
-          '平均值和标准差是在最后一维上算的，也就是一个词向量自己的 512 个数之间。不同的词、不同的句子互不影响。',
-          '用 4 个数的小向量走一遍：',
+          '注意平均值和标准差是在最后一维上算的，也就是一个词向量自己的 512 个数之间。所以不同的词、不同的句子互不影响。',
+          '不妨用 4 个数的小向量走一遍：',
           {
             table: {
               head: ['', '第 0 个', '第 1 个', '第 2 个', '第 3 个'],
@@ -77,14 +77,15 @@
               '**ε**：很小的常数 10<sup>-6</sup>，防止标准差接近 0 时除出一个巨大的数',
             ],
           },
-          '初始时 α = 1、bias = 0，层归一化就是纯粹的标准化。训练过程中它们会被调整。',
-          'α 和 bias 要训练，所以它们是**参数**；上一章的位置表不训练，是 **buffer**。',
+          '一开始 α = 1、bias = 0，层归一化就是纯粹的标准化；训练中它们才被调整。',
+          '对照上一章：α 和 bias 要训练，所以是**参数**；位置表不训练，所以是 **buffer**。',
         ],
       },
       {
         section: '前置知识',
         title: '前馈网络：每个位置各自过两层全连接',
         doc: [
+          '层归一化只调整尺度，不做变换。模型还需要一个能对每个位置单独做非线性变换的零件，这就是前馈网络。论文这样描述它：',
           paper(
             '3.3 节',
             'In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forward network, which is applied to each position separately and identically. This consists of two linear transformations with a ReLU activation in between.',

@@ -23,8 +23,8 @@
         section: '前置知识',
         title: '不用等反向全部算完',
         doc: [
-          '朴素 DDP 的时间线是这样的：反向传播从头算到尾，这期间网络空着；反向结束以后才开始通信，这期间计算单元空着。',
-          '反向传播是**从最后一层往前**算的。最后一层的梯度最先算好，那时前面几层还在算。如果最后一层的梯度一好就开始同步，通信就藏在了剩下的反向计算后面——到反向结束时，大部分通信已经做完了。',
+          '先看朴素 DDP 的时间线：反向传播从头算到尾，这期间网络空着；反向结束以后才开始通信，这期间计算单元又空着。两者没有重叠，浪费了一半。',
+          '可以发现，反向传播是**从最后一层往前**算的，最后一层的梯度最先算好，那时前面几层还在算。如果它一算好就开始同步，通信就藏在了剩下的反向计算后面，到反向结束时，大部分通信已经做完了。',
           '要做到这一点需要两样东西：',
           {
             list: [
@@ -41,7 +41,7 @@
           ref('Tensor.register_post_accumulate_grad_hook(hook)', 'generated/torch.Tensor.register_post_accumulate_grad_hook.html', 'Registers a backward hook that runs after grad accumulation. The hook will be called after all gradients for a tensor have been accumulated, meaning that the .grad field has been updated on that tensor.', '注册一个在梯度累加之后运行的反向钩子。当一个张量的梯度全部累加完毕、也就是它的 .grad 已经更新之后，这个钩子会被调用。'),
           '时机：给每个参数注册一个「梯度累加完以后」的钩子。反向传播一算好这个参数的 `.grad`，就会调用钩子，并把参数本身传进来。',
           '不阻塞：`dist.all_reduce(tensor, async_op=True)` 发起通信后立刻返回一个**句柄**（handle），不等通信完成。之后调用 `handle.wait()` 才会真正等它结束。',
-          '所以我们写一个包装类 `DDPIndividualParameters`：构造时广播参数、给每个参数挂钩子；钩子里先把梯度除以进程数、再异步 all-reduce，句柄存起来；`opt.step()` 之前调用 `finish_gradient_synchronization()`，把所有句柄等完。这正是作业测试接口要的两个方法。',
+          '把这两样拼起来，就是包装类 `DDPIndividualParameters`：构造时广播参数、给每个参数挂钩子；钩子里先把梯度除以进程数，再异步 all-reduce，句柄存起来；`opt.step()` 之前调用 `finish_gradient_synchronization()`，把所有句柄等完。这正好对应官方测试要的两个接口。',
         ],
       },
 

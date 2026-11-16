@@ -22,7 +22,7 @@
         section: '前置知识',
         title: '这一章要写什么',
         doc: [
-          '编码器读懂了原句，解码器负责一个词一个词地生成译文。这一章写 `DecoderBlock` 和 `Decoder`，结构和编码器很像，写法也几乎一样。',
+          '编码器读懂了原句，接下来要一个词一个词地生成译文，这是解码器的事。可以把它看成编码器多了一个子层：除了看已经生成的译文，还要回头看原句。这一章写 `DecoderBlock` 和 `Decoder`，写法和编码器几乎一样。',
           {
             flow: [
               { label: '已有的译文', sub: '(batch, tgt_len, 512)' },
@@ -62,7 +62,7 @@
         section: '前置知识',
         title: '交叉注意力：译文去看原句',
         doc: [
-          '交叉注意力里，query 来自解码器，key 和 value 来自编码器的输出。译文的每个位置拿着自己的问题，去原句的每个位置找相关的信息。',
+          '多出来的那个子层叫交叉注意力：query 来自解码器，key 和 value 来自编码器的输出。也就是说，译文的每个位置拿着自己的问题，去原句的每个位置找相关的信息。',
           {
             table: {
               head: ['', '形状（一个头，省略 batch）'],
@@ -75,7 +75,7 @@
             },
           },
           '分数矩阵是 `tgt_len` 行、`src_len` 列：第 i 行是译文第 i 个位置对原句各个位置的权重。结果的长度跟着译文走。',
-          '第 3 章的多头注意力分开收 `q`、`k`、`v`，就是为了这里。',
+          '这也是第 3 章的多头注意力要分开收 `q`、`k`、`v` 的原因。',
         ],
       },
       {
@@ -87,7 +87,7 @@
             'We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i.',
             '我们还修改了解码器里的自注意力子层，不让一个位置看到它后面的位置。这个掩码，加上输出的嵌入错开了一个位置，保证了对位置 i 的预测只依赖于 i 之前已知的输出。'
           ),
-          '训练时整句译文一次送进解码器，每个位置要预测下一个词：',
+          '先看训练时解码器在做什么：整句译文一次送进去，每个位置要预测下一个词：',
           {
             table: {
               head: ['位置', '0', '1', '2', '3'],

@@ -23,7 +23,7 @@
         section: '前置知识',
         title: '这一章要写什么',
         doc: [
-          '零件都齐了。这一章先写最后一个零件 `ProjectionLayer`，再写 `Transformer` 把所有零件连起来，最后用函数 `build_transformer` 按超参数一次造好整个模型。',
+          '零件都齐了，还差两步：把解码器的输出变成「下一个词是谁」的打分，再把所有零件连起来。这一章先写最后一个零件 `ProjectionLayer`，再写 `Transformer` 把零件连起来，最后用函数 `build_transformer` 按超参数一次造好整个模型。',
           '完整的数据流：',
           {
             flow: [
@@ -55,7 +55,7 @@
             'Similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension d_model. We also use the usual learned linear transformation and softmax function to convert the decoder output to predicted next-token probabilities.',
             '和其他序列转换模型一样，我们用学习得到的嵌入把输入和输出的词变成 d_model 维的向量。我们也用常见的可学习线性变换和 softmax，把解码器的输出变成对下一个词的预测概率。'
           ),
-          '输出层就是一个线性层：把每个位置 `d_model` 维的向量变成 `vocab_size` 个分数，分数最高的词就是模型认为最可能的下一个词。',
+          '解码器的输出还是 `d_model` 维的向量，我们要的却是词表里每个词的分数。所以输出层就是一个线性层：把每个位置的向量变成 `vocab_size` 个分数，分数最高的词就是模型认为最可能的下一个词。',
           { shape: ['(batch, tgt_len, d_model)', '(batch, tgt_len, vocab_size)'], label: '形状' },
           '这份代码的输出层只做线性变换，返回 softmax 之前的分数（logits）。训练时用的 `nn.CrossEntropyLoss` 会在内部做 log-softmax；生成时只需要找最大的分数，也用不到 softmax。',
         ],
@@ -97,7 +97,7 @@
             },
           },
           '造好之后，所有二维及以上的参数（各种矩阵）用 Xavier 均匀分布重新初始化；偏置、α 这类一维参数保持原样。这是 hkproj 和 Annotated Transformer 的做法，论文本身没有规定初始化方式。',
-          '原句词表 1000、译文词表 1200 时的参数量：',
+          '不妨算一下，原句词表 1000、译文词表 1200 时的参数量：',
           {
             table: {
               head: ['部分', '计算', '参数'],

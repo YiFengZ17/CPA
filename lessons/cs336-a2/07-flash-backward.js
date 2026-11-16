@@ -22,7 +22,7 @@
         section: '前置知识',
         title: '从输出往回推',
         doc: [
-          '前向是三步：`S = Q Kᵀ · c`（c = 1/√d），`P = softmax(S)`（按行），`O = P V`。反向传播拿到输出的梯度 `dO`，按相反的顺序往回推：',
+          '要写反向，先把前向列清楚：`S = Q Kᵀ · c`（c = 1/√d），`P = softmax(S)`（按行），`O = P V`。反向传播拿到输出的梯度 `dO`，按相反的顺序往回推：',
           {
             table: {
               head: ['前向这一步', '反向得到'],
@@ -40,9 +40,9 @@
         section: '前置知识',
         title: 'softmax 的梯度，和那个 D',
         doc: [
-          '对一行来说，`Pⱼ = e^(Sⱼ) / Σₖ e^(Sₖ)`。改变 Sⱼ 会影响这一行所有的 P：自己变大，别人都变小。算出来是：',
+          '为什么 softmax 特殊？对一行来说，`Pⱼ = e^(Sⱼ) / Σₖ e^(Sₖ)`，改变 Sⱼ 会影响这一行所有的 P：自己变大，别人都变小。按链式法则把这些影响加起来，得到：',
           '`dSⱼ = Pⱼ (dPⱼ − Σₖ Pₖ dPₖ)`',
-          '括号里减去的那个和，对一整行是同一个数，记作 D。直接按定义算它要先有 dP，还要一次逐行求和。有一个更省的算法：因为 `dP = dO Vᵀ`，`O = P V`，',
+          '可以发现，括号里减去的那个和，对一整行是同一个数，记作 D。直接按定义算它，要先有 dP，再逐行求和。但它还能换一种算法：因为 `dP = dO Vᵀ`，`O = P V`，',
           '`D = Σₖ Pₖ dPₖ = Σₖ Pₖ (dO · Vₖ) = dO · (Σₖ Pₖ Vₖ) = dO · O`',
           '也就是 `D = rowsum(dO ∘ O)`：dO 和 O 逐个相乘再按行求和，两个都是 n × d 的小矩阵，和 n × n 的 P 无关。FlashAttention-2 正是这样算 D 的。',
         ],
@@ -51,12 +51,12 @@
         section: '前置知识',
         title: '用 L 重新算出 P',
         doc: [
-          '反向需要 P，但前向没有存它。前向存了每行的 logsumexp `L`，于是：',
+          '最后一个问题：反向需要 P，可前向没有存它。好在前向存了每行的 logsumexp `L`，于是：',
           '`P = e^(S − L)`',
-          '只要用 Q、K 重新算一遍 S，减去 L 取指数，P 就回来了——和前向里那个 P 完全一样（因果时同样要先遮住）。',
+          '只要用 Q、K 重新算一遍 S，减去 L 取指数，P 就回来了，和前向里那个 P 完全一样（因果时同样要先遮住）。',
           '作业允许反向不分块，直接在整个矩阵上算，再用 `torch.compile` 让它更快；FlashAttention-2 论文里的反向也是分块的，原理一样，只是 dK、dV 要按 K 块累加。我们写不分块的版本，公式最清楚。',
           ref('Tensor.backward / torch.autograd.grad', 'generated/torch.autograd.grad.html', 'Compute and return the sum of gradients of outputs with respect to the inputs.', '计算并返回输出对输入的梯度之和。'),
-          '测试时用 `torch.autograd.grad` 分别求出两种实现的梯度，逐个比较。',
+          '验证分两处：官方的 `test_flash_backward_pytorch` 比较 dq、dk、dv；Triton 版借用同一个反向，它的梯度由 `flash_triton.py` 末尾的自检用 `torch.autograd.grad` 比较。',
         ],
       },
 

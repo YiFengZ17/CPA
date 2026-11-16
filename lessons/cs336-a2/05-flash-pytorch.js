@@ -24,8 +24,8 @@
         title: '自己定义前向和反向：autograd.Function',
         doc: [
           ref('torch.autograd.Function', 'autograd.html#function', 'Base class to create custom autograd.Function.', '用来创建自定义 autograd.Function 的基类。'),
-          '平时写模型，只写前向，反向由 PyTorch 根据前向里的每一步自动推出来。FlashAttention 不一样：我们不想让 PyTorch 记住前向里那一堆分块的中间结果，而要自己决定反向传播怎么算、需要存什么。',
-          '办法是继承 `torch.autograd.Function`，写两个静态方法：',
+          '平时写模型只写前向，反向由 PyTorch 根据前向里的每一步自动推出来。可 FlashAttention 的重点恰恰是「少存东西」：如果让 PyTorch 自动求导，它会记住前向里那一堆分块的中间结果，省下的显存又被占回去了。所以我们要自己决定反向怎么算、需要存什么。',
+          '办法是继承 `torch.autograd.Function`，自己写两个静态方法：',
           {
             table: {
               head: ['方法', '做什么'],
@@ -35,14 +35,14 @@
               ],
             },
           },
-          '使用时不直接调用 forward，而是写 `FlashAttentionPyTorch.apply(q, k, v, is_causal)`，PyTorch 会把它接进自动求导的图里。作业的测试接口就是要你返回这样一个类。',
+          '使用时不直接调用 forward，而是写 `FlashAttentionPyTorch.apply(q, k, v, is_causal)`，PyTorch 会把它接进自动求导的图里。官方测试通过 `adapters.py` 要的，正是这样一个类。',
         ],
       },
       {
         section: '前置知识',
         title: '要写出来的计算',
         doc: [
-          '输入 q 的形状是 `(batch, n_q, d)`，k、v 是 `(batch, n_k, d)`。Q 每块 16 行，K、V 每块 16 行（作业要求块至少 16×16）。对每一块 Q（记作 Qᵢ）：',
+          '把第 4 章的算法落到具体形状上：q 是 `(batch, n_q, d)`，k、v 是 `(batch, n_k, d)`。Q 每块 16 行，K、V 每块 16 行（作业要求块至少 16×16）。对每一块 Q（记作 Qᵢ）：',
           {
             list: [
               '初始化：`m = −∞`，`l = 0`，`acc = 0`。',
@@ -51,7 +51,7 @@
             ],
           },
           { viz: { kind: 'array', title: '在线 softmax（回顾）', frames: trace.onlineSoftmax([1, 3, 2, 0.5, 4, 1.5], 2) } },
-          '最后存下 L、q、k、v、o，反向传播会用到。这一章先把反向留空，第 7 章再写。',
+          '最后存下 L、q、k、v、o，留给反向传播。反向这一章先空着，第 7 章再写。',
         ],
       },
 
