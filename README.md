@@ -20,7 +20,7 @@
 
 每章最后都会真实运行一次。页面终端里的输出，全部用真实的 PyTorch、Python、gcc、g++、Java、Rust 跑过，逐行一致。CS336 作业 2 没有 GPU 也真实运行：Triton kernel 用解释器模式（`TRITON_INTERPRET=1`）在 CPU 上执行，分布式用 `gloo` 后端起 4 个进程；计时这类每次都不一样的输出，用正则核对格式。
 
-后续计划（其余 15 类 LeetCode 题、Python 入门、C 语言入门、导出视频）见 [PLAN.md](PLAN.md)。
+后续计划（其余 15 类 LeetCode 题、Python 入门、C 语言入门、导出视频）见 [PLAN.md](PLAN.md)。课程文字的写法见 [STYLE.md](STYLE.md)。
 
 ## 两套界面
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 把当前提交里的站点文件发布到 gh-pages 分支（GitHub Pages 从这个分支取内容）。
-# 只带页面需要的文件，不带 README 和 tools。
+# 只带页面需要的文件，不带 README、PLAN、STYLE 和 tools。
 #
 #   bash tools/deploy.sh
 set -euo pipefail
@@ -10,7 +10,7 @@ index="$(mktemp)"
 trap 'rm -f "$index"' EXIT
 
 GIT_INDEX_FILE="$index" git read-tree HEAD
-GIT_INDEX_FILE="$index" git rm --cached -r -q --ignore-unmatch README.md PLAN.md tools .gitignore
+GIT_INDEX_FILE="$index" git rm --cached -r -q --ignore-unmatch README.md PLAN.md STYLE.md tools .gitignore
 tree="$(GIT_INDEX_FILE="$index" git write-tree)"
 
 # 接在 gh-pages 已有的历史后面；内容没变就不发布
