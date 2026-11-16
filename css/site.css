@@ -1441,3 +1441,6 @@ a.tile:hover {
     width: 22ch;
   }
 }
+
+/* English hero copy wraps naturally in narrow preview panels. */
+.site .hero h1[lang="en"] b { white-space: normal; }

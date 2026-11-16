@@ -51,6 +51,9 @@
       window.Player.open(route.course, route.chapter);
       document.title = C.byId[route.course].title + ' · CPA';
     }
+    if (inSite && ['#boards', '#algo'].includes(location.hash)) {
+      requestAnimationFrame(() => document.querySelector(location.hash)?.scrollIntoView({ block: 'start' }));
+    }
     current = route;
   }
 
