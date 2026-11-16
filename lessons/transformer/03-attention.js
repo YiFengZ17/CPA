@@ -23,7 +23,7 @@
         section: '前置知识',
         title: '这一章要写什么',
         doc: [
-          '这一章只写一个零件 `MultiHeadAttentionBlock`。它是整个 Transformer 的核心，也是最长的一个：让每个词去看句子里的其他词，按相关程度把它们的信息汇总过来。',
+          '到目前为止，每个词的向量只包含它自己的信息。可一个词的意思离不开上下文：「追」要看是谁追谁。这一章写的 `MultiHeadAttentionBlock` 就解决这件事：让每个词去看句子里的其他词，按相关程度把它们的信息汇总过来。它是 Transformer 的核心，也是最长的一个零件。',
           {
             flow: [
               { label: 'x', sub: '(batch, seq_len, 512)' },
@@ -42,13 +42,14 @@
         section: '前置知识',
         title: '注意力在做什么',
         doc: [
+          '怎么「按相关程度汇总」？论文给了一个很通用的定义：',
           paper(
             '3.2 节',
             'An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, keys, values, and output are all vectors. The output is computed as a weighted sum of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key.',
             '注意力函数可以描述为：把一个 query 和一组 key-value 对映射成一个输出，query、key、value 和输出都是向量。输出是 value 的加权和，每个 value 的权重由 query 和对应 key 的匹配程度决定。'
           ),
           '不妨把它想成查资料：每个词带着一个问题（query）；每个词也贴着一个标签（key），附着一份内容（value）。问题和标签越匹配，就从那份内容里取得越多。',
-          '比如「猫 追 狗」里，「追」这个词汇总信息时的权重可能是：',
+          '比如在「猫 追 狗」里，「追」汇总信息时的权重可能是：',
           {
             table: {
               head: ['被看的词', '猫', '追', '狗'],
@@ -57,15 +58,16 @@
               note: '数值仅为示意。权重加起来是 1，「追」的新向量 = 0.45 · v猫 + 0.15 · v追 + 0.40 · v狗。',
             },
           },
-          'Q、K、V 由同一个输入分别乘上三个可学习的矩阵 W_q、W_k、W_v 得到。输入相同，矩阵不同，三者各司其职。',
+          '那问题、标签、内容从哪来？Q、K、V 都由同一个输入分别乘上三个可学习的矩阵 W_q、W_k、W_v 得到。输入相同，矩阵不同，三者就能各司其职。',
         ],
       },
       {
         section: '前置知识',
         title: '缩放点积注意力',
         doc: [
+          '把上一页的想法写成公式：用点积衡量 query 和 key 有多匹配，softmax 把分数变成权重，再对 value 加权求和。',
           { formula: ['Attention(Q, K, V) = softmax( Q · Kᵀ / √d_k ) · V'] },
-          '一步一步看形状（先只看一个头，省略 batch）：',
+          '我们一步一步看形状（先只看一个头，省略 batch）：',
           {
             table: {
               head: ['步骤', '运算', '结果形状', '含义'],
@@ -90,6 +92,7 @@
         section: '前置知识',
         title: '多头：把 512 维切成 8 份',
         doc: [
+          '一组 Q、K、V 只能算出一套权重，也就只有一种「看」法。可一个词往往同时关心好几种关系，比如语法上的和意思上的。所以论文用了多个头：',
           paper(
             '3.2.2 节',
             'Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions.',
@@ -100,7 +103,7 @@
             'In this work we employ h = 8 parallel attention layers, or heads. For each of these we use d_k = d_v = d_model/h = 64.',
             '我们使用 h = 8 个并行的注意力层，也就是 8 个头。每个头的 d_k = d_v = d_model/h = 64。'
           ),
-          '代码里不建 8 套小矩阵，而是先用一个大矩阵算出完整的 Q、K、V，再把最后一维的 512 切成 8 段，每段 64，交给一个头。算完再拼回 512，乘上 W_o 混合各头的结果。',
+          '代码里并不建 8 套小矩阵，而是先用一个大矩阵算出完整的 Q、K、V，再把最后一维的 512 切成 8 段，每段 64，交给一个头。算完拼回 512，再乘上 W_o 混合各头的结果。形状是这样变化的：',
           {
             table: {
               head: ['代码', '形状', '说明'],
@@ -123,7 +126,7 @@
         doc: [
           '有两种情况要挡住一部分位置：一是一批句子长短不一，短句末尾补齐用的空白词（padding）不该被看；二是解码器生成译文时，不能偷看后面还没生成的词。',
           '怎么挡？权重来自 softmax，那就在 softmax 之前，把不许看的位置的分数改成一个极小的数，代码里是 −10<sup>9</sup>。e 的 −10<sup>9</sup> 次方几乎就是 0，这些位置的权重也就是 0。',
-          '挡住「后面的词」用的是下三角掩码：',
+          '比如挡住「后面的词」，用的是下三角掩码：',
           {
             table: {
               head: ['', 'pos 0', 'pos 1', 'pos 2', 'pos 3'],

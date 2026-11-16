@@ -22,7 +22,7 @@
         section: '前置知识',
         title: '这一章要写什么',
         doc: [
-          '前面写好的零件都是单独的。这一章写三个零件，把它们组装成编码器：',
+          '零件已经有了：注意力让词与词交换信息，前馈网络让每个位置各自加工，层归一化稳住尺度。这一章把它们组装成编码器，还需要再写三个零件：',
           {
             list: [
               '`ResidualConnection`：给一个子层套上残差连接和层归一化',
@@ -51,8 +51,8 @@
             'We employ a residual connection around each of the two sub-layers, followed by layer normalization. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself.',
             '我们在两个子层外面各加一个残差连接，随后做层归一化。也就是说，每个子层的输出是 LayerNorm(x + Sublayer(x))，其中 Sublayer(x) 是子层本身实现的函数。'
           ),
-          '残差连接就是把子层的输入直接加到它的输出上：`x + Sublayer(x)`。这样子层只需要学「在 x 的基础上改多少」；而且层数很多时，梯度也能沿着这条直通的加法传回前面，不容易消失。',
-          '层归一化放在哪里，有两种写法：',
+          '层数一多，训练就变难：梯度要穿过很多层才能传回前面，越传越弱。残差连接的办法很简单，把子层的输入直接加到它的输出上：`x + Sublayer(x)`。这样子层只需要学「在 x 的基础上改多少」，梯度也能沿着这条直通的加法传回前面。',
+          '再加上层归一化，它放在哪里有两种写法：',
           {
             table: {
               head: ['写法', '公式', '说明'],
@@ -93,7 +93,7 @@
         doc: [
           paper('3.1 节', 'The encoder is composed of a stack of N = 6 identical layers.', '编码器由 N = 6 个相同的层堆叠而成。'),
           '6 层结构相同，但各有各的参数，不是同一层重复用 6 次。数据依次穿过每一层，形状始终是 `(batch, seq_len, d_model)`。',
-          '一层编码器有多少参数：',
+          '不妨数一数一层编码器有多少参数：',
           {
             table: {
               head: ['部分', '计算', '参数'],
@@ -113,7 +113,7 @@
         section: '前置知识',
         title: '两个写法：lambda 和 ModuleList',
         doc: [
-          '残差连接要接收「子层」本身：它的 `forward(x, sublayer)` 里会调用 `sublayer(...)`。前馈网络只收一个输入，直接传进去就行；可注意力要 `q, k, v, mask` 四个参数。',
+          '写代码前还有两个 Python 上的问题。第一个：残差连接要接收「子层」本身，它的 `forward(x, sublayer)` 里会调用 `sublayer(...)`。前馈网络只收一个输入，直接传进去就行；可注意力要 `q, k, v, mask` 四个参数。',
           py(
             'lambda',
             'reference/expressions.html#lambda',
@@ -128,7 +128,7 @@
             'Holds submodules in a list. ModuleList can be indexed like a regular Python list, but modules it contains are properly registered, and will be visible by all Module methods.',
             '把子模块放在一个列表里。它可以像普通 Python 列表一样按下标取用，但里面的模块会被正确登记，所有 Module 的方法都能看到它们。'
           ),
-          '还有一个坑：零件如果放进普通的 Python 列表，PyTorch 不知道它们存在，`parameters()` 找不到里面的参数，模型搬到显卡上时它们也不会跟着走。所以一组零件要用 `nn.ModuleList` 装。',
+          '第二个：零件如果放进普通的 Python 列表，PyTorch 不知道它们存在，`parameters()` 找不到里面的参数，模型搬到显卡上时它们也不会跟着走。所以一组零件要用 `nn.ModuleList` 装。',
         ],
       },
 
