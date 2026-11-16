@@ -10,7 +10,7 @@
     board: 'dl',
     title: '从零手写 Transformer',
     eyebrow: 'PyTorch · 论文 Attention Is All You Need',
-    blurb: '从一个空文件开始，6 章逐字写出完整的 Transformer：嵌入、位置编码、注意力、编码器、解码器，最后组装成模型。每个部件都引用官方文档原文，每章的输出都用真实的 PyTorch 跑过。',
+    blurb: '从一个空文件开始，逐字写出完整的 Transformer：嵌入、位置编码、注意力、编码器、解码器，最后组装成模型。',
     chain: true,
     source: { name: 'hkproj/pytorch-transformer', url: 'https://github.com/hkproj/pytorch-transformer' },
     stats: [

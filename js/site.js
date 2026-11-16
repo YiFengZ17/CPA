@@ -45,15 +45,7 @@
   }
 
   function footer() {
-    return (
-      '<footer class="wrap foot"><span>CPA · Code Programming Animation</span>' +
-      '<nav aria-label="来源">' +
-      '<a href="https://github.com/hkproj/pytorch-transformer" target="_blank" rel="noopener">hkproj/pytorch-transformer</a>' +
-      '<a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>' +
-      '<a href="https://github.com/YiFengZ17/The-Summer-of-2026/blob/main/Leetcode_sheet.md" target="_blank" rel="noopener">LeetCode 题单</a>' +
-      '<a href="https://github.com/YiFengZ17/CPA" target="_blank" rel="noopener">本项目</a>' +
-      '</nav></footer>'
-    );
+    return '<footer class="wrap foot"><span>CPA · Code Programming Animation</span></footer>';
   }
 
   function langPicker(id) {
@@ -349,7 +341,7 @@
     const seen = (i) => S.seenInChapter(course.id, course.chapters[i]) / course.chapters[i].steps.length;
     const layer = (i, name) =>
       '<a class="layer" href="#' + course.id + '-' + (i + 1) + '" style="--p:' + seen(i).toFixed(3) + '"><span class="mono">' + pad2(i + 1) + '</span>' + esc(name) +
-      '<small>' + course.chapters[i].steps.length + ' 页</small></a>';
+      '</a>';
     const n = course.chapters.length;
     const titles = course.chapters.map((c) => c.title);
     const stack =
@@ -361,7 +353,6 @@
       '<article class="feature"><div>' +
       '<div class="eyebrow">' + esc(course.eyebrow || '') + '</div>' +
       '<h4>' + esc(course.title) + '</h4><p>' + esc(course.blurb) + '</p>' +
-      '<div class="stats">' + (course.stats || []).map(([v, k]) => '<div class="stat"><b>' + esc(v) + '</b><span>' + esc(k) + '</span></div>').join('') + '</div>' +
       '<a class="s-btn s-btn-primary" href="#' + course.id + '">进入课程 →</a></div>' +
       '<div class="stack" aria-label="各章从下往上叠成模型"><div class="layer-label">↑ 数据从下往上流</div>' + stack + '</div>' +
       '</article>'
@@ -383,14 +374,13 @@
       .map(
         (g, k) =>
           '<a class="layer" href="#' + course.id + '-' + (g.items[0] + 1) + '" style="--p:' + seen(g.items).toFixed(3) + '"><span class="mono">' + pad2(k + 1) + '</span>' + esc(g.name) +
-          '<small>' + g.items.length + ' 章</small></a>'
+          '</a>'
       )
       .join('');
     return (
       '<article class="feature"><div>' +
       '<div class="eyebrow">' + esc(course.eyebrow || '') + '</div>' +
       '<h4>' + esc(course.title) + '</h4><p>' + esc(course.blurb) + '</p>' +
-      '<div class="stats">' + (course.stats || []).map(([v, k]) => '<div class="stat"><b>' + esc(v) + '</b><span>' + esc(k) + '</span></div>').join('') + '</div>' +
       '<a class="s-btn s-btn-primary" href="#' + course.id + '">进入课程 →</a></div>' +
       '<div class="stack is-down" aria-label="按作业顺序的各部分">' + stack + '</div>' +
       '</article>'
@@ -422,7 +412,7 @@
     return C.PLANNED.filter((p) => p.board === 'lang')
       .map(
         (p) =>
-          '<article class="course-card"><div class="course-top"><h4>' + esc(p.title) + '</h4><span class="chip is-next">' + p.chapters.length + ' 章 · 规划中</span></div>' +
+          '<article class="course-card"><div class="course-top"><h4>' + esc(p.title) + '</h4><span class="chip is-next">规划中</span></div>' +
           '<p>' + esc(p.blurb) + '</p><pre>' + (teaser[p.id] || '') + '</pre>' +
           '<ol>' + p.chapters.map((c) => '<li>' + esc(c) + '</li>').join('') + '</ol></article>'
       )
@@ -433,10 +423,8 @@
     stopAll();
     document.title = 'CPA · Code Programming Animation';
     const transformer = C.byId.transformer;
-    const algo = C.courses.filter((c) => c.board === 'algo');
     const cs336 = C.courses.filter((c) => c.board === 'cs336');
     const last = lastVisit();
-    const proof = proofNumbers();
     const totals = C.TOPICS.reduce((a, t) => [a[0] + t.easy, a[1] + t.medium, a[2] + t.hard], [0, 0, 0]);
 
     root.innerHTML =
@@ -444,40 +432,39 @@
       nav(false) +
       '<div class="wrap"><div class="hero-grid" id="top"><div>' +
       '<div class="eyebrow">Code Programming Animation</div>' +
-      '<h1><span>看代码，</span><b>一个字一个字</b><b class="end">长出来</b></h1>' +
-      '<p class="lede">先读几页思路，再看代码在编辑器里逐字写出，每一页由你翻。旁白按人思考的顺序走：先想到要做什么，再落下这一行代码。从零手写 Transformer，CS336 作业逐步实现，LeetCode 题单逐类精讲，算法题可选五种语言。</p>' +
+      '<h1 lang="en"><span>Watch code</span><b class="end">come to life</b></h1>' +
+      '<p class="lede">从第一性原理出发学习，体验亲自在编辑器里写代码的过程。</p>' +
       '<div class="cta">' +
       (last
-        ? '<a class="s-btn s-btn-primary" href="' + last.href + '">继续：' + esc(last.text) + ' →</a><a class="s-btn s-btn-ghost" href="#' + transformer.id + '">从 Transformer 开始</a>'
-        : '<a class="s-btn s-btn-primary" href="#' + transformer.id + '">从 Transformer 开始 →</a>' +
-          (algo.length ? '<a class="s-btn s-btn-ghost" href="#' + algo[0].id + '">先做算法题 <small>' + esc(algo[0].title) + '</small></a>' : '')) +
+        ? '<a class="s-btn s-btn-primary" href="' + last.href + '">继续：' + esc(last.text) + ' →</a><a class="s-btn s-btn-ghost" href="#' + transformer.id + '">Transformer from scratch</a>'
+        : '<a class="s-btn s-btn-primary" href="#' + transformer.id + '">Transformer from scratch</a>') +
+      '<a class="s-btn s-btn-ghost" href="#boards">所有板块 / 题库 →</a>' +
       '</div>' +
-      '<div class="hero-meta"><span>' + C.courses.length + ' 门课 · ' + C.courses.reduce((n, c) => n + C.pageCount(c), 0) + ' 页</span><span>Python · C · C++ · Java · Rust</span><span>输出全部真实运行</span></div>' +
       '</div>' +
       '<figure class="specimen" aria-label="代码样片：重放课程里真实的几步">' +
       '<figcaption class="spec-bar"><span class="spec-file"></span><span class="spec-course"></span></figcaption>' +
       '<div class="spec-body"><div class="spec-code"></div><div class="spec-say" aria-label="思路"></div></div><div class="spec-progress"></div></figure>' +
       '</div></div></header>' +
       '<main>' +
-      '<section class="section wrap" aria-labelledby="how-title"><div class="section-head"><div><div class="eyebrow">怎么学</div><h2 id="how-title">每一页，三件事</h2></div>' +
-      '<p>概念和代码分开讲。写代码时，旁白先说出下一个念头，代码再跟着落下来：为什么需要这个循环、这一行在维护什么、用到了什么语法。</p></div>' +
+      '<section class="section wrap" aria-labelledby="how-title"><div class="section-head"><div><div class="eyebrow">怎么学</div><h2 id="how-title">先学思路，再跟代码</h2></div>' +
+      '<p>旁白提示每一步代码所需的思路与文档。</p></div>' +
       '<div class="steps">' +
       '<div class="step"><div class="step-no">01</div><h3>读思路</h3><p>前置知识页先把要用的概念讲完，配公式、表格和动图演示。</p>' +
       '<div class="mini"><div class="kick">前置知识 03 / 05</div><div class="s-formula">softmax( Q·Kᵀ / √d_k ) · V</div><div class="bar"></div><div class="bar"></div></div></div>' +
       '<div class="step"><div class="step-no">02</div><h3>看代码长出来</h3><p>旁白先说出下一个念头，代码再跟着一个字一个字写出来。</p>' +
       '<div class="mini"><span class="note">窗口要一格一格往右挪……</span>\n<span class="k">for</span> right <span class="k">in</span> <span class="f">range</span>(k, <span class="f">len</span>(nums)):\n<span class="note">右边进来一个，左边出去一个……</span>\n    <span class="typing">window += nums[right]</span><span class="caret"></span></div></div>' +
-      '<div class="step"><div class="step-no">03</div><h3>跑一遍</h3><p>每章最后真实运行一次。页面上的输出，和真实运行的结果逐行一致。</p>' +
-      '<div class="mini"><span class="ok">$</span> python3 solution.py\n<span style="color: var(--text)">12.75</span>\n<span style="color: var(--text)">5.0</span>\n<span class="ok">✓ 与真实运行一致</span></div></div>' +
+      '<div class="step"><div class="step-no">03</div><h3>跑一遍</h3><p>查看运行结果，理解代码如何得到答案。</p>' +
+      '<div class="mini"><span class="ok">$</span> python3 solution.py\n<span style="color: var(--text)">12.75</span>\n<span style="color: var(--text)">5.0</span>\n<span class="ok">运行结束</span></div></div>' +
       '</div></section>' +
-      '<section class="section wrap" id="boards" aria-labelledby="boards-title"><div class="section-head"><div><div class="eyebrow">板块</div><h2 id="boards-title">选一条路开始</h2></div>' +
-      '<p>四个板块各自独立，可以从任何一个开始。学到哪里，回来时这里会点亮。</p></div>' +
+      '<section class="section wrap" id="boards" aria-labelledby="boards-title"><div class="section-head"><div><div class="eyebrow">板块</div><h2 id="boards-title">课程列表</h2></div>' +
+      '</div>' +
       '<div class="board"><div class="board-head"><h3>深度学习</h3><span class="mono">1 门课</span><span class="spacer"></span><span class="mono">已完成</span></div>' +
       transformerCard(transformer) + '</div>' +
       (cs336.length
         ? '<div class="board" id="cs336"><div class="board-head"><h3>CS336 作业</h3><span class="mono">Stanford · Language Modeling from Scratch</span><span class="spacer"></span><span class="mono">' + cs336.length + ' 份作业</span></div>' +
           cs336.map(groupCard).join('') + '</div>'
         : '') +
-      '<div class="board" id="algo"><div class="board-head"><h3>算法题</h3><span class="mono">The-Summer-of-2026 题单</span><span class="spacer"></span>' + langPicker('home-langs') + '</div>' +
+      '<div class="board" id="algo"><div class="board-head"><h3>精选算法题</h3><span class="spacer"></span>' + langPicker('home-langs') + '</div>' +
       '<div class="totals"><div class="mono" style="font-size: 13px; color: var(--text-2)">195 题 · 16 类</div>' +
       '<div class="totals-bar" aria-hidden="true"><span class="e" style="flex: ' + totals[0] + '"></span><span class="m" style="flex: ' + totals[1] + '"></span><span class="h" style="flex: ' + totals[2] + '"></span></div>' +
       '<div class="legend"><span><i class="e"></i>简单 ' + totals[0] + '</span><span><i class="m"></i>中等 ' + totals[1] + '</span><span><i class="h"></i>困难 ' + totals[2] + '</span></div></div>' +
@@ -485,13 +472,6 @@
       '<div class="board"><div class="board-head"><h3>语言入门</h3><span class="mono">2 门课</span><span class="spacer"></span><span class="mono">规划中</span></div>' +
       '<div class="pair">' + plannedCards() + '</div></div>' +
       '</section>' +
-      '<section class="section wrap" aria-labelledby="proof-title"><div class="section-head"><div><div class="eyebrow">核对</div><h2 id="proof-title">每一行都核对过</h2></div>' +
-      '<p>教程里最怕的是讲错。这里引用的每一句文档、显示的每一行输出，都对照过出处。</p></div>' +
-      '<div class="proof">' +
-      '<div><b>' + proof.refs + '<small>处</small></b><p>引文逐字对照官方文档的源文件、语言标准和论文原文，附中文和链接。</p></div>' +
-      '<div><b>' + proof.runs + '<small>次</small></b><p>终端里的每一次运行，都在真实的 Python、gcc、g++、Java、Rust 和 PyTorch 上跑过，逐行一致。</p></div>' +
-      '<div><b>241<small>行</small></b><p>Transformer 的代码出自开源实现 hkproj/pytorch-transformer，改动处逐条注明。</p></div>' +
-      '</div></section>' +
       '</main>' + footer();
 
     bindLangPicker('home-langs');
@@ -524,7 +504,7 @@
           '<li><a class="chapter-row' + (done ? ' is-done' : '') + (started && i === resume ? ' is-last' : '') + '" href="#' + c.id + '-' + (i + 1) + '">' +
           '<span class="num">' + esc(label(ch, i)) + '</span>' +
           '<div><h3>' + esc(ch.title) + level + '</h3><p>' + esc(ch.summary || '') + '</p></div>' +
-          '<div class="chapter-meta"><span>' + ch.steps.length + ' 页' + (s ? ' · 看过 ' + s : '') + '</span>' +
+          '<div class="chapter-meta">' +
           '<div class="c-progress-bar"><i style="width:' + ((s / ch.steps.length) * 100).toFixed(1) + '%"></i></div></div>' +
           '<span class="go" aria-hidden="true">→</span></a></li>'
         );
@@ -545,14 +525,13 @@
       '<h1>' + esc(c.title) + '</h1><p class="lede">' + esc(c.blurb) + '</p>' +
       '<div class="cta">' + primary + '</div></div>' +
       '<div class="c-side">' +
-      '<div class="stats">' + (c.stats || [[String(c.chapters.length), '章'], [String(total), '页']]).map(([v, k]) => '<div class="stat"><b>' + esc(v) + '</b><span>' + esc(k) + '</span></div>').join('') + '</div>' +
-      '<div class="c-progress"><div class="c-progress-top"><span>学习进度</span><span>' + seen + ' / ' + total + ' 页</span></div>' +
+      '<div class="c-progress"><div class="c-progress-top"><span>学习进度</span><span>' + Math.round(seen / total * 100) + '%</span></div>' +
       '<div class="c-progress-bar"><i style="width:' + ((seen / total) * 100).toFixed(1) + '%"></i></div></div>' +
       (c.langs ? '<div class="c-lang"><span>题解语言</span>' + langPicker('course-langs') + '</div>' : '') +
       (c.source ? '<div class="c-lang"><span>' + esc(c.source.label || '代码来源') + '</span><a href="' + esc(c.source.url) + '" target="_blank" rel="noopener" class="mono">' + esc(c.source.name) + ' ↗</a></div>' : '') +
       '</div></div></div></header>' +
       '<main class="section wrap" style="padding-top: 64px">' +
-      '<div class="section-head"><div><div class="eyebrow">目录</div><h2>' + c.chapters.length + (c.board === 'algo' ? ' 章' : ' 章') + '</h2></div>' +
+      '<div class="section-head"><div><div class="eyebrow">目录</div><h2>课程目录</h2></div>' +
       '<p>' + esc(c.board === 'algo' ? '先读第一章的概念和模板，再按顺序做题，从简单到困难。每道题都可以在编辑器里随时换语言。' : '后一章接着前一章写完的代码继续写，建议按顺序读。') + '</p></div>' +
       '<ol class="timeline">' + rows + '</ol></main>' + footer();
 

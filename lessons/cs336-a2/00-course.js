@@ -20,7 +20,7 @@
     board: 'cs336',
     title: 'A2 · 系统：让训练更快',
     eyebrow: 'Stanford CS336 · Assignment 2 (Systems)',
-    blurb: '作业 2 关心的不是模型本身，而是怎么让它跑得更快、用更多机器：先学会准确地测时间，再用混合精度省显存；把注意力改写成 FlashAttention-2，在 Triton 里写 GPU kernel；最后自己实现数据并行（DDP）的三种版本，以及优化器状态分片。所有代码都在 CPU 上真实跑过。',
+    blurb: '作业 2 关心的不是模型本身，而是怎么让它跑得更快、用更多机器：先学会准确地测时间，再用混合精度省显存；把注意力改写成 FlashAttention-2，在 Triton 里写 GPU kernel；最后自己实现数据并行（DDP）的三种版本，以及优化器状态分片。',
     chain: true,
     project: 'assignment2-systems',
     assets: {
