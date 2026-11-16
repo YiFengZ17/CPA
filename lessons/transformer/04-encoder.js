@@ -51,7 +51,7 @@
             'We employ a residual connection around each of the two sub-layers, followed by layer normalization. That is, the output of each sub-layer is LayerNorm(x + Sublayer(x)), where Sublayer(x) is the function implemented by the sub-layer itself.',
             '我们在两个子层外面各加一个残差连接，随后做层归一化。也就是说，每个子层的输出是 LayerNorm(x + Sublayer(x))，其中 Sublayer(x) 是子层本身实现的函数。'
           ),
-          '残差连接就是把子层的输入直接加到它的输出上：`x + Sublayer(x)`。子层只需要学「在 x 的基础上改多少」。层数很多时，梯度也能沿着这条直通的加法传回前面，不容易消失。',
+          '残差连接就是把子层的输入直接加到它的输出上：`x + Sublayer(x)`。这样子层只需要学「在 x 的基础上改多少」；而且层数很多时，梯度也能沿着这条直通的加法传回前面，不容易消失。',
           '层归一化放在哪里，有两种写法：',
           {
             table: {
@@ -128,7 +128,7 @@
             'Holds submodules in a list. ModuleList can be indexed like a regular Python list, but modules it contains are properly registered, and will be visible by all Module methods.',
             '把子模块放在一个列表里。它可以像普通 Python 列表一样按下标取用，但里面的模块会被正确登记，所有 Module 的方法都能看到它们。'
           ),
-          '零件如果放进普通的 Python 列表，PyTorch 不知道它们存在：`parameters()` 找不到里面的参数，模型搬到显卡上时它们也不会跟着走。所以一组零件要用 `nn.ModuleList` 装。',
+          '还有一个坑：零件如果放进普通的 Python 列表，PyTorch 不知道它们存在，`parameters()` 找不到里面的参数，模型搬到显卡上时它们也不会跟着走。所以一组零件要用 `nn.ModuleList` 装。',
         ],
       },
 

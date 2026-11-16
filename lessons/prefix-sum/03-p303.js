@@ -51,13 +51,22 @@
       },
       {
         section: '题目与思路',
-        title: '思路：先算好，再查',
+        title: '怎么想到的',
         doc: [
-          '每次查询都从 left 加到 right，一次最多 10<sup>4</sup> 个数，查 10<sup>4</sup> 次就是 10<sup>8</sup>。数组又不会变，同样的加法被反复做了很多遍。',
-          '这是一道「设计题」：对象创建时做一次准备工作，之后的每次查询都要快。准备工作就是算好**前缀和数组**：`pre[i]` 是前 i 个数的和。查询时，`nums[left..right]` 正好是「前 right+1 个」去掉「前 left 个」：',
-          '`sumRange(left, right) = pre[right + 1] − pre[left]`',
+          '最直接的做法是每次查询都从 left 加到 right。一次最多 10<sup>4</sup> 个数，查 10<sup>4</sup> 次就是 10<sup>8</sup> 次加法。',
+          '但数组不会变，同样的加法被反复做了很多遍。不妨在构造对象时，一次算好所有前缀的和，查询时直接拿来用。',
+          '那一段的和怎么从前缀和得到？`nums[left..right]` 正好是「前 right+1 个」去掉「前 left 个」，两个前缀和相减就是。',
+        ],
+      },
+      {
+        section: '题目与思路',
+        title: '思路',
+        doc: [
+          '**构造**：算出前缀和数组，`pre[i]` 是前 i 个数的和，`pre[0] = 0`。',
+          '**查询**：`sumRange(left, right) = pre[right + 1] − pre[left]`。',
           { viz: { kind: 'grid', title: '样例', frames: trace.prefix(NUMS, Q) } },
-          '构造 O(n)，每次查询 O(1)；前缀和数组占 O(n) 空间。和最大 10<sup>4</sup> × 10<sup>5</sup> = 10<sup>9</sup>，int 装得下。',
+          '**复杂度**：构造 O(n)，每次查询 O(1)，空间 O(n)。',
+          '**范围**：和最大 10<sup>4</sup> × 10<sup>5</sup> = 10<sup>9</sup>，int 装得下。',
         ],
       },
 

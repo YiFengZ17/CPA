@@ -88,10 +88,10 @@
       },
       {
         section: '写代码',
-        title: '我是谁：找到自己的那块 Q',
+        title: '先确定：这个实例负责哪一块 Q',
         say: ['每个程序实例先问自己的编号：网格第 0 维是第几块 Q，第 1 维是第几批。据此算出要处理的行号，把这一块 Q 读进来，再初始化三个累加量。'],
         ops: [
-          { type: '\n    tile = tl.program_id(0)\n    b = tl.program_id(1)', note: '我负责第几块 Q、第几批。' },
+          { type: '\n    tile = tl.program_id(0)\n    b = tl.program_id(1)', note: '这个程序实例负责第几块 Q、第几批。' },
           { type: '\n    rows = tile * Q_TILE + tl.arange(0, Q_TILE)', note: '这一块的 16 个行号：起点加上 0 到 15。' },
           { type: '\n    dims = tl.arange(0, D)', note: '向量的 d 个列号。' },
           { type: '\n    q = tl.load(Q + b * stride_qb + rows[:, None] * stride_qn + dims[None, :])', note: '算出这一块每个元素的地址：起点 + 批的偏移 + 行的偏移 + 列号。行号写成一列、列号写成一行，广播成 16 × d 个地址，一次读进来。' },
