@@ -55,22 +55,7 @@
   ];
 
   // 还在规划中的课程，只在首页上展示
-  const PLANNED = [
-    {
-      id: 'python-intro',
-      board: 'lang',
-      title: 'Python 入门',
-      blurb: '每章一个知识点，用一道简单题演示怎么用。学完可以直接接上算法题。',
-      chapters: ['变量与字符串', '条件与循环', '列表与切片', '字符串方法', '字典与集合', '函数与递归', '类与对象', '常用标准库'],
-    },
-    {
-      id: 'c-intro',
-      board: 'lang',
-      title: 'C 语言入门',
-      blurb: '从 gcc 编译第一行代码开始，到指针、结构体、动态内存，最后亲手写一个链表。',
-      chapters: ['编译与运行', '变量与运算', '条件与循环', '数组', '函数', '指针', '字符串', '结构体', 'malloc 与 free', '链表'],
-    },
-  ];
+  const PLANNED = [];
 
   const courses = [];
   const byId = {};
