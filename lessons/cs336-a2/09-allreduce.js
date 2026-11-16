@@ -1,6 +1,6 @@
 /*
  * CS336 A2 · 第 9 章：all-reduce 与通信测速
- * allreduce.py：起 4 个进程，看一次 all_reduce 前后每个进程的数据；再测不同大小的张量 all-reduce 要多久。
+ * cs336_systems/allreduce.py：起 4 个进程，看一次 all_reduce 前后每个进程的数据；再测不同大小的张量 all-reduce 要多久。
  * setup() 后面几章都会导入。
  */
 (function (root) {
@@ -28,7 +28,7 @@
     label: 'all-reduce',
     title: 'all-reduce 与通信测速',
     summary: '起 4 个进程，亲眼看一次 all_reduce：每个进程拿着不同的数进去，拿着同一个和出来。再测一测数据越大，通信要多久。',
-    files: ['allreduce.py'],
+    files: ['cs336_systems/allreduce.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -57,8 +57,8 @@
       {
         section: '写代码',
         title: '每个进程第一件事：加入进程组',
-        file: 'allreduce.py',
-        say: ['新建 `allreduce.py`。每个进程启动以后，第一件事都是加入进程组：约定好集合的地址和端口，然后初始化。这段后面几章都要用，单独写成一个函数。'],
+        file: 'cs336_systems/allreduce.py',
+        say: ['在 `cs336_systems/` 里新建 `allreduce.py`。每个进程启动以后，第一件事都是加入进程组：约定好集合的地址和端口，然后初始化。这段后面几章都要用，单独写成一个函数。'],
         ops: [
           { type: 'import os\nimport timeit', note: '`os` 用来设环境变量，`timeit` 计时。' },
           { type: '\n\nimport torch\nimport torch.distributed as dist\nimport torch.multiprocessing as mp', note: '分布式通信在 `torch.distributed` 里，起多个进程用 `torch.multiprocessing`。' },
@@ -113,7 +113,7 @@
         ops: [
           { type: '\n\n\nif __name__ == "__main__":\n    mp.spawn(run, args=(4,), nprocs=4, join=True)', note: '起 4 个进程当 4 张卡。`args` 里的 4 会作为 world_size 传给 run，rank 由 spawn 自己补上。`join=True` 等它们全部结束。必须放在 `if __name__` 里：子进程会重新导入这个文件，不能再去 spawn。' },
           { pause: 500 },
-          { run: 'python allreduce.py', output: OUT, pattern: PATTERN },
+          { run: 'uv run python cs336_systems/allreduce.py', output: OUT, pattern: PATTERN },
         ],
       },
 

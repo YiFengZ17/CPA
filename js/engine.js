@@ -59,7 +59,7 @@
   //   { kind: 'say', file, pos, where }  这一步的旁白放在哪里（where 是 'after' 或 'before' 这一行）
   //   { kind: 'note', file, pos, text }  一行代码的说明，放在这一行上方
   function newState(lesson) {
-    const st = { files: {}, order: [], active: null, cursor: {}, marks: {}, notes: [], sel: null, term: null };
+    const st = { files: {}, order: [], opened: [], active: null, cursor: {}, marks: {}, notes: [], sel: null, term: null };
     addPreset(st, lesson);
     if (lesson.files.length) openFile(st, lesson.files[0]);
     return st;
@@ -81,6 +81,7 @@
       st.cursor[name] = 0;
       st.order.push(name);
     }
+    if (!st.opened.includes(name)) st.opened.push(name); // 打开过的文件才有标签页，预置的文件只在资源管理器里
     const switched = st.active !== name;
     st.active = name;
     return switched;

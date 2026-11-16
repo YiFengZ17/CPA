@@ -1,5 +1,6 @@
 /*
  * CS336 A2 · 第 1 章：作业 2 要做什么（只有前置知识页）
+ * 作业仓库原有的文件在这里作为 preset 放进项目（见 00-repo.js），左边的资源管理器从这一章起就能看到整个仓库。
  */
 (function (root) {
   'use strict';
@@ -9,8 +10,9 @@
     group: '开始',
     label: '总览',
     title: '作业 2 要做什么',
-    summary: '四个部分各解决什么问题；没有 GPU 时怎么把每一行代码都真实跑通；这门课怎么用。',
+    summary: '四个部分各解决什么问题；作业仓库里有哪些文件、我们的代码写在哪、怎么接上官方测试；没有 GPU 时怎么把每一行代码都真实跑通。',
     files: [],
+    preset: root.A2REPO,
     docName: '前置知识.md',
     docKicker: '总览',
     steps: [
@@ -31,7 +33,27 @@
               ],
             },
           },
-          '整门课接着写同一个项目：后一章从前一章写完的文件开始。最后一共 9 个文件：模型、测速、精度实验、两个 FlashAttention、测试，以及分布式的四个文件。',
+          '整门课接着写同一个项目：后一章从前一章写完的文件开始。项目就是作业仓库本身，下一页先看看里面有什么。',
+        ],
+      },
+      {
+        section: '总览',
+        title: '作业仓库里有什么',
+        doc: [
+          '左边的资源管理器里就是作业 2 的仓库（assignment2-systems），文件和官方仓库一模一样。点开任何一个文件都能看。三个文件夹各有分工：',
+          {
+            table: {
+              head: ['位置', '是什么', '我们要做的'],
+              rows: [
+                ['`cs336-basics/`', '作业 1 的参考实现，课程方给的，代码在里面的 `cs336_basics` 包里：`model.py` 里有语言模型 `BasicsTransformerLM` 和注意力函数 `scaled_dot_product_attention`，`nn_utils.py` 里有 `cross_entropy`，`optimizer.py` 里有 `AdamW`', '不改，用 `import cs336_basics` 直接拿来用'],
+                ['`cs336_systems/`', '作业 2 的代码放这里，一开始只有一个 `__init__.py`', '每一章往里加文件'],
+                ['`tests/`', '官方测试。`adapters.py` 是测试和我们代码之间的**接口**：测试只调用它里面的几个函数，函数体原来都是 `raise NotImplementedError`', '写好一个功能，就在 `adapters.py` 里把对应的函数接上'],
+              ],
+            },
+          },
+          '为什么能 `import cs336_basics`？根目录的 `pyproject.toml` 把 `cs336-basics` 文件夹声明成一个依赖（`[tool.uv.sources]` 那一段），`uv` 会把它和 `cs336_systems` 一起装进环境。所以作业里的命令都以 `uv run` 开头，比如 `uv run pytest`：先按 `pyproject.toml` 准备好环境，再运行后面的命令。如果想用自己作业 1 的实现，把那一段的路径改成自己的仓库就行——这也是为什么作业 1 的接口（类名、参数）要和参考实现一致。',
+          '数据也不用另外准备：作业 1 训练用的 TinyStories 和 OpenWebText 这里用不到，测速用随机生成的 token；DDP 测试用的数据是 `tests/fixtures/` 里两个很小的 `.pt` 文件，它们是二进制的，编辑器里不显示。',
+          '资源管理器里，课程中新建的文件标 **U**（绿色），改过的原有文件标 **M**（蓝色），和 VS Code 里 git 的标记一样。',
         ],
       },
       {
@@ -58,7 +80,8 @@
         title: '这门课怎么用',
         doc: [
           '每一章和其他课一样：先读几页前置知识，再看代码一行一行写出来，旁白先说出下一个念头，最后真实运行一次。',
-          '作业的题目说明在 <a href="https://github.com/stanford-cs336/assignment2-systems" target="_blank" rel="noopener">stanford-cs336/assignment2-systems ↗</a>，这里只用自己的话转述要做什么。作业要求通过它自带的测试（`tests/adapters.py` 里的几个接口），我们写的类和它要的接口一一对应，但测试本身用的是自己写的对照：和不分块的注意力、和单进程训练逐个比较。',
+          '作业的题目说明在 <a href="https://github.com/stanford-cs336/assignment2-systems" target="_blank" rel="noopener">stanford-cs336/assignment2-systems ↗</a>，这里只用自己的话转述要做什么。验证用两种办法：能接到官方测试上的（FlashAttention、DDP、分片优化器），就在 `adapters.py` 里接好，运行 `uv run pytest`；官方测试管不到的（测速、精度、Triton 在 CPU 上的结果、朴素 DDP），写一段自己的对照，和标准答案逐个比较。',
+          '两处和最新版作业不同：第 12 章的分桶 DDP 是往年作业的内容（2026 版去掉了它，换成了 FSDP），它是从逐个参数通信到更复杂的方案之间最直接的一步，这里保留；FSDP（`tests/test_fsdp.py`）这门课暂时没有写。',
           '如果你正在上这门课，建议先自己写一遍，再回来对照。这里的代码追求的是**看得懂**：一个想法对应一段代码，不做与主题无关的优化。',
           '下一章从测速开始。',
         ],

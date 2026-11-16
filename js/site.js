@@ -299,7 +299,7 @@
         const state = E.clone(i === 0 ? seg.compiled.initial : seg.compiled.after[i - 1]);
         const gen = E.runStep(state, step, E.rng(i + 1));
         gen.next(); // 光标先移到要写的位置
-        file.textContent = state.active;
+        file.textContent = state.active.split('/').pop();
         render(step, state, k / total);
         const tick = () => {
           const r = gen.next();
@@ -323,7 +323,7 @@
         // 不播放动画：直接显示这一段写完后的样子
         const i = seg.steps[seg.steps.length - 1];
         const state = E.clone(seg.compiled.after[i]);
-        file.textContent = state.active;
+        file.textContent = state.active.split('/').pop();
         render(seg.lesson.steps[i], state, 1);
         return;
       }

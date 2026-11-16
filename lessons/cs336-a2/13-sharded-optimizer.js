@@ -1,7 +1,7 @@
 /*
  * CS336 A2 · 第 13 章：优化器状态分片
- * sharded_optimizer.py：每个参数只归一个进程管，只有它保存 AdamW 的状态、做更新，然后把新参数广播给大家。
- * 和单进程 AdamW 比较；打印每个进程保存了几个参数的状态。
+ * cs336_systems/sharded_optimizer.py：每个参数只归一个进程管，只有它保存 AdamW 的状态、做更新，然后把新参数广播给大家。
+ * 先自己和单进程 AdamW 比较、打印每个进程保存了几个参数的状态；再接上 adapters.py 的 get_sharded_optimizer，跑官方测试。
  */
 (function (root) {
   'use strict';
@@ -14,7 +14,7 @@
     label: '分片',
     title: '优化器状态分片',
     summary: 'AdamW 给每个参数存两份状态，每张卡都存一整份太浪费。把参数分给各个进程，各管各的状态和更新，更新完广播出去。',
-    files: ['sharded_optimizer.py'],
+    files: ['cs336_systems/sharded_optimizer.py', 'tests/adapters.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -58,11 +58,11 @@
       {
         section: '写代码',
         title: '类的外壳，构造函数',
-        file: 'sharded_optimizer.py',
-        say: ['新建 `sharded_optimizer.py`。构造时先记下自己的 rank、进程数、内部优化器的类和参数；再调用父类的构造函数，它会把参数组交给 `add_param_group`，所以这几个属性必须在那之前准备好。'],
+        file: 'cs336_systems/sharded_optimizer.py',
+        say: ['在 `cs336_systems/` 里新建 `sharded_optimizer.py`。构造时先记下自己的 rank、进程数、内部优化器的类和参数；再调用父类的构造函数，它会把参数组交给 `add_param_group`，所以这几个属性必须在那之前准备好。'],
         ops: [
           { type: 'import torch\nimport torch.distributed as dist\nimport torch.multiprocessing as mp\nimport torch.nn.functional as F', note: '和前几章一样的几个模块。' },
-          { type: '\n\nfrom allreduce import setup\nfrom ddp import DDPIndividualParameters\nfrom naive_ddp import make_data, make_model, same_params, train_reference', note: '梯度同步用第 11 章的包装类；模型、数据、对照训练都是现成的。' },
+          { type: '\n\nfrom cs336_systems.allreduce import setup\nfrom cs336_systems.ddp import DDPIndividualParameters\nfrom cs336_systems.naive_ddp import make_data, make_model, same_params, train_reference', note: '都是 `cs336_systems` 包里前几章写好的：梯度同步用第 11 章的包装类；模型、数据、对照训练来自朴素 DDP 那一章。' },
           { type: '\n\n\nclass ShardedOptimizer(torch.optim.Optimizer):', note: '继承 PyTorch 的优化器基类，`zero_grad`、`param_groups` 这些就都有了。' },
           { type: '\n    def __init__(self, params, optimizer_cls, **kwargs):', note: '和作业要求的接口一致：参数、内部优化器的类、以及传给它的超参数（比如学习率）。' },
           { type: '\n        self.rank = dist.get_rank()\n        self.world_size = dist.get_world_size()', note: '我是第几个进程，一共几个。' },
@@ -112,7 +112,25 @@
           { type: '\n        print("每个 rank 保存优化器状态的参数个数:", states)\n        print("和单进程 AdamW 一致:", same_params(model.module, ref))', note: '模型有 4 个参数张量，4 个进程应该各管 1 个。' },
           { type: '\n    dist.barrier()\n    dist.destroy_process_group()\n\n\nif __name__ == "__main__":\n    mp.spawn(run, args=(4,), nprocs=4, join=True)', note: '等齐了再退出进程组；入口起 4 个进程。' },
           { pause: 500 },
-          { run: 'python sharded_optimizer.py', output: ['每个 rank 保存优化器状态的参数个数: [1, 1, 1, 1]', '和单进程 AdamW 一致: True'] },
+          { run: 'uv run python cs336_systems/sharded_optimizer.py', output: ['每个 rank 保存优化器状态的参数个数: [1, 1, 1, 1]', '和单进程 AdamW 一致: True'] },
+        ],
+      },
+      {
+        section: '运行验证',
+        title: '接上官方测试',
+        file: 'tests/adapters.py',
+        say: [
+          '`adapters.py` 里的 `get_sharded_optimizer(params, optimizer_cls, **kwargs)` 和我们的构造函数参数完全一样，直接转交。',
+          '`tests/test_sharded_optimizer.py` 起 2 个进程，每个进程用同一个种子造同一个模型，一份交给普通的 AdamW，一份交给分片的 AdamW（带 `weight_decay`、`betas` 这些超参数），用同样的数据各训练 10 步，最后逐个参数比较。它不用 DDP：两个进程的数据本来就一样，梯度自然一样，测的只是「分开更新、再广播」对不对。',
+        ],
+        ops: [
+          { replace: '        Instance of sharded optimizer.\n    """\n    raise NotImplementedError', with: '        Instance of sharded optimizer.\n    """\n    from cs336_systems.sharded_optimizer import ShardedOptimizer\n\n    return ShardedOptimizer(params, optimizer_cls, **kwargs)', note: '这个函数的文档字符串后面就是 `raise NotImplementedError`，换成我们的类：超参数原样传进去，它再传给内部的 AdamW。' },
+          { pause: 300 },
+          {
+            run: 'uv run pytest -q tests/test_sharded_optimizer.py',
+            output: ['', 'tests/test_sharded_optimizer.py::test_sharded_optimizer[ToyModel] PASSED', 'tests/test_sharded_optimizer.py::test_sharded_optimizer[ToyModelWithTiedWeights] PASSED', '', '============================== 2 passed in 5.46s ==============================='],
+            pattern: ['', 'tests/test_sharded_optimizer\\.py::test_sharded_optimizer\\[ToyModel\\] PASSED', 'tests/test_sharded_optimizer\\.py::test_sharded_optimizer\\[ToyModelWithTiedWeights\\] PASSED', '', '=+ 2 passed in \\d+\\.\\d+s =+'],
+          },
         ],
       },
 
@@ -121,7 +139,7 @@
         section: '小结',
         title: '作业 2 写完了',
         say: [
-          '每个进程只保存了 1/4 的优化器状态，训练结果和单进程 AdamW 完全一样。代价是每一步多了一轮广播。作业接着让你在 GPU 上测：显存省了多少，每一步慢了多少。',
+          '每个进程只保存了 1/4 的优化器状态，训练结果和单进程 AdamW 完全一样，官方测试也通过了。代价是每一步多了一轮广播。作业接着让你在 GPU 上测：显存省了多少，每一步慢了多少。',
           '回顾作业 2：先**测量**——计时、精度、显存；再针对瓶颈**优化**——FlashAttention 减少显存读写，DDP 让多张卡一起算、并把通信藏到计算后面，分片把重复存储的状态切开。每一步优化，都先确认结果和原来一模一样。',
         ],
       },

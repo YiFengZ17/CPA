@@ -1,6 +1,6 @@
 /*
  * CS336 A2 · 第 3 章：混合精度
- * precision.py：两个小实验——不同精度累加的误差；autocast 里每一处是什么类型。
+ * cs336_systems/precision.py：两个小实验——不同精度累加的误差；autocast 里每一处是什么类型。
  */
 (function (root) {
   'use strict';
@@ -25,7 +25,7 @@
     label: '精度',
     title: '混合精度',
     summary: '低精度更快、更省显存，但累加会出错。看清楚 autocast 把哪些运算换成了低精度、哪些留在 fp32。',
-    files: ['precision.py'],
+    files: ['cs336_systems/precision.py'],
     docName: '前置知识.md',
     steps: [
       /* ============================================================ 前置知识 */
@@ -72,8 +72,8 @@
       {
         section: '写代码',
         title: '实验一：累加 1000 次 0.01',
-        file: 'precision.py',
-        say: ['新建 `precision.py`。第一个实验：用三种组合把 0.01 加 1000 次，看离 10 差多少。'],
+        file: 'cs336_systems/precision.py',
+        say: ['在 `cs336_systems/` 里新建 `precision.py`。第一个实验：用三种组合把 0.01 加 1000 次，看离 10 差多少。'],
         ops: [
           { type: 'import torch\nimport torch.nn as nn', note: '要用 PyTorch 的张量来控制精度；第二个实验还要用 `nn` 搭一个小模型。' },
           { type: '\n\n# 一、累加 1000 次 0.01，看不同精度差多少', note: '先用注释写下这个实验要回答的问题。' },
@@ -112,7 +112,7 @@
           { type: '\n    loss = nn.functional.cross_entropy(logits, torch.tensor([0, 1]))\n    print("loss:", loss.dtype)', note: '损失函数里有 log 和求和，对精度很敏感，看看 autocast 怎么处理它。' },
           { type: '\nloss.backward()\nprint("梯度:", model.fc1.weight.grad.dtype)', note: '反向传播放在 autocast 外面（这是推荐的写法），最后看梯度的类型。' },
           { pause: 500 },
-          { run: 'python precision.py', output: OUT },
+          { run: 'uv run python cs336_systems/precision.py', output: OUT },
         ],
       },
 
