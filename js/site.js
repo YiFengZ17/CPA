@@ -38,8 +38,8 @@
       '<a class="logo" href="#home" aria-label="CPA 首页"><b>CPA</b><i></i><span>Code Programming Animation</span></a>' +
       '<div class="nav-links">' +
       (back ? '<a class="keep" href="#home">全部课程</a>' : '<a href="#boards">课程</a><a href="#algo">题单</a>') +
-      '<a href="https://github.com/YiFengZ17/LLM-from-scratch-animation/blob/claude/funny-dijkstra-g78rhj/PLAN.md" target="_blank" rel="noopener">计划</a>' +
-      '<a class="keep" href="https://github.com/YiFengZ17/LLM-from-scratch-animation" target="_blank" rel="noopener">GitHub ↗</a>' +
+      '<a href="https://github.com/YiFengZ17/CPA/blob/main/PLAN.md" target="_blank" rel="noopener">计划</a>' +
+      '<a class="keep" href="https://github.com/YiFengZ17/CPA" target="_blank" rel="noopener">GitHub ↗</a>' +
       '</div></nav>'
     );
   }
@@ -51,7 +51,7 @@
       '<a href="https://github.com/hkproj/pytorch-transformer" target="_blank" rel="noopener">hkproj/pytorch-transformer</a>' +
       '<a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>' +
       '<a href="https://github.com/YiFengZ17/The-Summer-of-2026/blob/main/Leetcode_sheet.md" target="_blank" rel="noopener">LeetCode 题单</a>' +
-      '<a href="https://github.com/YiFengZ17/LLM-from-scratch-animation" target="_blank" rel="noopener">本项目</a>' +
+      '<a href="https://github.com/YiFengZ17/CPA" target="_blank" rel="noopener">本项目</a>' +
       '</nav></footer>'
     );
   }
